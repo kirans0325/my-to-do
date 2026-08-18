@@ -18,8 +18,8 @@ const getBaseUrl = (): string => {
     }
     return 'http://localhost:8000/api/v1';
   } else if (Platform.OS === 'android') {
-    // In Android Emulator
-    return 'http://10.0.2.2:8000/api/v1';
+    // In Android Mobile connected via Hotspot (Your laptop's hotspot IP is 10.130.151.61)
+    return 'http://10.130.151.61:8000/api/v1';
   }
   return 'http://localhost:8000/api/v1';
 };
