@@ -7,6 +7,7 @@ on:
 
 jobs:
   build:
+    name: 📱 Build Android APK
     runs-on: ubuntu-latest
 
     steps:
@@ -34,13 +35,17 @@ jobs:
         working-directory: frontend
         run: npx expo prebuild --platform android --clean
 
-      - name: 🏗️ Build Android APK
+      - name: 🏗️ Build Installable Android APK
         working-directory: frontend/android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: 🔍 List Generated APK Files
+        working-directory: frontend/android
+        run: ls -la app/build/outputs/apk/debug/
 
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: TaskFlow-Pro-Android-APK
-          path: frontend/android/app/build/outputs/apk/release/app-release-unsigned.apk
-          if-no-files-found: warn
+          path: frontend/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
