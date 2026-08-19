@@ -1,0 +1,44 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/health",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/docs",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/openapi.json",
+      "dest": "api/index.py"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "frontend/index.html"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "postgresql://neondb_owner:npg_quZx1kJWj0zr@ep-wandering-field-azbbut6k-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+  }
+}

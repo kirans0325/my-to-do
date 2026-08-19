@@ -23,6 +23,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   const priorityColor =
     currentTheme.colors.priority[task.priority] || currentTheme.colors.primary;
 
+  const priorityFlagEmoji =
+    task.priority === 'HIGH' || task.priority === 'URGENT'
+      ? '🚩'
+      : task.priority === 'MEDIUM'
+      ? '🟡'
+      : task.priority === 'LOW'
+      ? '🔵'
+      : '';
+
   const handleProgressChange = (delta: number) => {
     const newProgress = Math.max(0, Math.min(100, task.progress_percentage + delta));
     updateTaskProgress(task.id, newProgress);
@@ -44,18 +53,21 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       {/* Top Header Row */}
       <View style={styles.headerRow}>
         <View style={styles.badgeRow}>
-          {/* Priority Badge */}
-          <View style={[styles.priorityBadge, { borderColor: priorityColor, backgroundColor: `${priorityColor}15` }]}>
-            <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
-            <Text style={[styles.priorityText, { color: priorityColor }]}>{task.priority}</Text>
-          </View>
+          {/* Priority Flag */}
+          {priorityFlagEmoji ? (
+            <View style={[styles.priorityBadge, { backgroundColor: `${priorityColor}15` }]}>
+              <Text style={[styles.priorityText, { color: priorityColor }]}>
+                {priorityFlagEmoji} {task.priority}
+              </Text>
+            </View>
+          ) : null}
 
           {/* Recurrence Badge */}
           {task.recurrence_type !== 'NONE' && (
             <View
               style={[
                 styles.recurrenceBadge,
-                { backgroundColor: `${recurrenceColor}18`, borderColor: `${recurrenceColor}44`, borderWidth: 1 },
+                { backgroundColor: `${recurrenceColor}15`, borderColor: `${recurrenceColor}40`, borderWidth: 1 },
               ]}
             >
               <Text style={[styles.recurrenceText, { color: recurrenceColor }]}>
@@ -69,11 +81,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
             <View
               style={[
                 styles.categoryBadge,
-                { backgroundColor: `${task.category.color}18`, borderColor: `${task.category.color}44`, borderWidth: 1 },
+                { backgroundColor: `${task.category.color}15`, borderColor: `${task.category.color}40`, borderWidth: 1 },
               ]}
             >
               <Text style={[styles.categoryText, { color: task.category.color }]}>
-                {task.category.name}
+                #{task.category.name}
               </Text>
             </View>
           )}
@@ -89,7 +101,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Title & Description */}
+      {/* Title & Description with TickTick-style circular checkbox */}
       <View style={styles.body}>
         <TouchableOpacity
           style={styles.titleRow}
@@ -98,8 +110,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
         >
           <View
             style={[
-              styles.checkbox,
-              { borderColor: currentTheme.colors.primary },
+              styles.circleCheckbox,
+              { borderColor: priorityColor },
               isDone && {
                 backgroundColor: currentTheme.colors.success,
                 borderColor: currentTheme.colors.success,
@@ -172,7 +184,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
             onPress={() => setShowSubtasks(!showSubtasks)}
           >
             <Text style={[styles.subtasksCount, { color: currentTheme.colors.textSecondary }]}>
-              Subtasks ({task.subtasks.filter((s) => s.completed).length}/{task.subtasks.length})
+              Milestones ({task.subtasks.filter((s) => s.completed).length}/{task.subtasks.length})
             </Text>
             <Text style={[styles.subtasksToggle, { color: currentTheme.colors.textMuted }]}>
               {showSubtasks ? '▲' : '▼'}
@@ -263,7 +275,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               { color: isDone ? currentTheme.colors.textSecondary : '#FFFFFF' },
             ]}
           >
-            {isDone ? 'Undo Complete' : '✓ Complete Task'}
+            {isDone ? 'Undo Complete' : '✓ Done'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -273,19 +285,19 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
+    borderRadius: 14,
+    padding: 15,
+    marginBottom: 12,
     borderWidth: 1,
   },
   cardDone: {
-    opacity: 0.65,
+    opacity: 0.6,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   badgeRow: {
     flexDirection: 'row',
@@ -295,35 +307,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   priorityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
     paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingVertical: 2,
     borderRadius: 6,
-    gap: 4,
-  },
-  priorityDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
   },
   priorityText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '700',
   },
   recurrenceBadge: {
     paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingVertical: 2,
     borderRadius: 6,
   },
   recurrenceText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 6,
   },
   categoryText: {
@@ -334,27 +337,27 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   deleteBtnText: {
-    fontSize: 14,
+    fontSize: 13,
   },
   body: {
-    marginBottom: 10,
+    marginBottom: 8,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  checkbox: {
+  circleCheckbox: {
     width: 22,
     height: 22,
-    borderRadius: 7,
+    borderRadius: 11,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkMark: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   title: {
@@ -369,14 +372,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 4,
     marginLeft: 32,
-    lineHeight: 19,
+    lineHeight: 18,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 4,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   dueRow: {
     flexDirection: 'row',
@@ -387,18 +390,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   dueText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
   },
   progressLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   progressBarContainer: {
-    height: 6,
+    height: 5,
     borderRadius: 3,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   progressBarFill: {
     height: '100%',
@@ -407,7 +410,7 @@ const styles = StyleSheet.create({
   subtasksContainer: {
     borderRadius: 10,
     padding: 10,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   subtasksHeader: {
     flexDirection: 'row',
@@ -416,7 +419,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   subtasksCount: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   subtasksToggle: {
@@ -426,11 +429,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 5,
+    paddingVertical: 4,
   },
   subtaskCheckbox: {
-    width: 16,
-    height: 16,
+    width: 15,
+    height: 15,
     borderRadius: 4,
     borderWidth: 1.5,
     alignItems: 'center',
@@ -438,7 +441,7 @@ const styles = StyleSheet.create({
   },
   subtaskCheckMark: {
     color: '#FFF',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
   },
   subtaskTitle: {
@@ -452,7 +455,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 4,
+    marginTop: 2,
     flexWrap: 'wrap',
     gap: 8,
   },
@@ -461,8 +464,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   stepBtn: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
   },
@@ -472,7 +475,7 @@ const styles = StyleSheet.create({
   },
   completeBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 8,
   },
   completeBtnText: {

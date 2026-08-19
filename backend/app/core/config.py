@@ -39,6 +39,12 @@ class Settings(BaseSettings):
         elif v.startswith("sqlite:///") and not v.startswith("sqlite+aiosqlite:///"):
             v = v.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
             
+        # Asyncpg uses ssl=require instead of sslmode=require
+        if "sslmode=require" in v:
+            v = v.replace("sslmode=require", "ssl=require")
+        if "&channel_binding=require" in v:
+            v = v.replace("&channel_binding=require", "")
+            
         return v
 
     @property

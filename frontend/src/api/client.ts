@@ -12,9 +12,15 @@ const getBaseUrl = (): string => {
   }
 
   if (Platform.OS === 'web') {
-    // In web browser
-    if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-      return `http://${window.location.hostname}:8000/api/v1`;
+    if (typeof window !== 'undefined' && window.location) {
+      // In Vercel / Production web hosting (same origin /api/v1)
+      if (window.location.port !== '8081' && window.location.port !== '19006' && window.location.port !== '3000') {
+        return `${window.location.origin}/api/v1`;
+      }
+      // In local development web browser
+      if (window.location.hostname) {
+        return `http://${window.location.hostname}:8000/api/v1`;
+      }
     }
     return 'http://localhost:8000/api/v1';
   } else if (Platform.OS === 'android') {

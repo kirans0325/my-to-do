@@ -5,6 +5,7 @@ export interface ThemeColors {
   surface: string;
   surfaceLight: string;
   surfaceHover: string;
+  surfaceActive: string;
   cardBorder: string;
   cardShadow: string;
   
@@ -37,6 +38,14 @@ export interface ThemeColors {
     MEDIUM: string;
     HIGH: string;
     URGENT: string;
+    NONE: string;
+  };
+
+  priorityFlags: {
+    HIGH: string;
+    MEDIUM: string;
+    LOW: string;
+    NONE: string;
   };
 
   recurrence: {
@@ -45,6 +54,15 @@ export interface ThemeColors {
     MONTHLY: string;
     YEARLY: string;
     NONE: string;
+  };
+
+  habits: {
+    coral: string;
+    emerald: string;
+    purple: string;
+    amber: string;
+    cyan: string;
+    blue: string;
   };
 
   mood: {
@@ -56,115 +74,153 @@ export interface ThemeColors {
   };
 }
 
+// TickTick-Inspired Charcoal & Indigo Dark Palette
 const darkColors: ThemeColors = {
-  background: '#0B0F17',
-  surface: '#151D2A',
-  surfaceLight: '#1E293B',
-  surfaceHover: '#2A374D',
+  background: '#16171A',
+  surface: '#1E2024',
+  surfaceLight: '#272A30',
+  surfaceHover: '#31343C',
+  surfaceActive: '#3A3E47',
   cardBorder: 'rgba(255, 255, 255, 0.08)',
-  cardShadow: 'rgba(0, 0, 0, 0.35)',
+  cardShadow: 'rgba(0, 0, 0, 0.45)',
 
-  primary: '#6366F1',
-  primaryHover: '#4F46E5',
-  primaryLight: 'rgba(99, 102, 241, 0.15)',
+  primary: '#4B89FF', // TickTick Blue
+  primaryHover: '#3B79EF',
+  primaryLight: 'rgba(75, 137, 255, 0.16)',
 
-  success: '#10B981',
-  successLight: 'rgba(16, 185, 129, 0.15)',
+  success: '#20BF6B', // TickTick Mint Green
+  successLight: 'rgba(32, 191, 107, 0.16)',
 
-  warning: '#F59E0B',
-  warningLight: 'rgba(245, 158, 11, 0.15)',
+  warning: '#FA8231', // TickTick Amber
+  warningLight: 'rgba(250, 130, 49, 0.16)',
 
-  danger: '#EF4444',
-  dangerLight: 'rgba(239, 68, 68, 0.15)',
+  danger: '#FF4757', // TickTick Vibrant Red
+  dangerLight: 'rgba(255, 71, 87, 0.16)',
 
-  info: '#0EA5E9',
-  infoLight: 'rgba(14, 165, 233, 0.15)',
+  info: '#0FB9B1',
+  infoLight: 'rgba(15, 185, 177, 0.16)',
 
-  text: '#F8FAFC',
-  textSecondary: '#94A3B8',
-  textMuted: '#64748B',
-  textInverse: '#0B0F17',
+  text: '#F5F6F8',
+  textSecondary: '#A4B0BE',
+  textMuted: '#747D8C',
+  textInverse: '#16171A',
 
-  inputBg: '#1E293B',
+  inputBg: '#272A30',
   inputBorder: 'rgba(255, 255, 255, 0.12)',
 
   priority: {
-    LOW: '#10B981',
-    MEDIUM: '#3B82F6',
-    HIGH: '#F59E0B',
-    URGENT: '#EF4444',
+    LOW: '#2ED573',
+    MEDIUM: '#FFA502',
+    HIGH: '#FF4757',
+    URGENT: '#FF3838',
+    NONE: '#747D8C',
+  },
+
+  priorityFlags: {
+    HIGH: '🚩 High',
+    MEDIUM: '🚩 Medium',
+    LOW: '🚩 Low',
+    NONE: '🏳️ None',
   },
 
   recurrence: {
-    DAILY: '#0EA5E9',
-    WEEKLY: '#6366F1',
-    MONTHLY: '#8B5CF6',
-    YEARLY: '#EC4899',
-    NONE: '#64748B',
+    DAILY: '#0FB9B1',
+    WEEKLY: '#4B89FF',
+    MONTHLY: '#8854D0',
+    YEARLY: '#FF6B6B',
+    NONE: '#747D8C',
+  },
+
+  habits: {
+    coral: '#FF6B6B',
+    emerald: '#20BF6B',
+    purple: '#8854D0',
+    amber: '#FA8231',
+    cyan: '#0FB9B1',
+    blue: '#4B89FF',
   },
 
   mood: {
-    GREAT: '#10B981',
-    GOOD: '#3B82F6',
-    NEUTRAL: '#F59E0B',
-    TIRED: '#8B5CF6',
-    STRESSED: '#EF4444',
+    GREAT: '#20BF6B',
+    GOOD: '#4B89FF',
+    NEUTRAL: '#FA8231',
+    TIRED: '#8854D0',
+    STRESSED: '#FF4757',
   },
 };
 
+// TickTick-Inspired Crisp & Minimal Light Palette
 const lightColors: ThemeColors = {
-  background: '#F8FAFC',
+  background: '#F5F6F8',
   surface: '#FFFFFF',
-  surfaceLight: '#F1F5F9',
-  surfaceHover: '#E2E8F0',
-  cardBorder: '#E2E8F0',
-  cardShadow: 'rgba(0, 0, 0, 0.05)',
+  surfaceLight: '#F0F2F5',
+  surfaceHover: '#E4E7ED',
+  surfaceActive: '#DCDFE6',
+  cardBorder: '#E4E7ED',
+  cardShadow: 'rgba(0, 0, 0, 0.04)',
 
-  primary: '#4F46E5',
-  primaryHover: '#4338CA',
-  primaryLight: '#EEF2FF',
+  primary: '#3F78E0', // TickTick Blue
+  primaryHover: '#3367CC',
+  primaryLight: '#EDF3FF',
 
-  success: '#059669',
-  successLight: '#ECFDF5',
+  success: '#10AC84',
+  successLight: '#E8F8F5',
 
-  warning: '#D97706',
-  warningLight: '#FFFBEB',
+  warning: '#F79F1F',
+  warningLight: '#FEF9E7',
 
-  danger: '#DC2626',
-  dangerLight: '#FEF2F2',
+  danger: '#EE5253',
+  dangerLight: '#FDEDEC',
 
-  info: '#0284C7',
-  infoLight: '#F0F9FF',
+  info: '#0ABDE3',
+  infoLight: '#EBF5FB',
 
-  text: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#94A3B8',
+  text: '#1E272E',
+  textSecondary: '#485460',
+  textMuted: '#808E9B',
   textInverse: '#FFFFFF',
 
-  inputBg: '#FFFFFF',
-  inputBorder: '#CBD5E1',
+  inputBg: '#F8F9FB',
+  inputBorder: '#D2DAE2',
 
   priority: {
-    LOW: '#059669',
-    MEDIUM: '#2563EB',
-    HIGH: '#D97706',
-    URGENT: '#DC2626',
+    LOW: '#10AC84',
+    MEDIUM: '#F79F1F',
+    HIGH: '#EE5253',
+    URGENT: '#EA2027',
+    NONE: '#808E9B',
+  },
+
+  priorityFlags: {
+    HIGH: '🚩 High',
+    MEDIUM: '🚩 Medium',
+    LOW: '🚩 Low',
+    NONE: '🏳️ None',
   },
 
   recurrence: {
-    DAILY: '#0284C7',
-    WEEKLY: '#4F46E5',
-    MONTHLY: '#7C3AED',
-    YEARLY: '#DB2777',
-    NONE: '#94A3B8',
+    DAILY: '#0ABDE3',
+    WEEKLY: '#3F78E0',
+    MONTHLY: '#6C5CE7',
+    YEARLY: '#FF6B6B',
+    NONE: '#808E9B',
+  },
+
+  habits: {
+    coral: '#FF6B6B',
+    emerald: '#10AC84',
+    purple: '#6C5CE7',
+    amber: '#F79F1F',
+    cyan: '#0ABDE3',
+    blue: '#3F78E0',
   },
 
   mood: {
-    GREAT: '#059669',
-    GOOD: '#2563EB',
-    NEUTRAL: '#D97706',
-    TIRED: '#7C3AED',
-    STRESSED: '#DC2626',
+    GREAT: '#10AC84',
+    GOOD: '#3F78E0',
+    NEUTRAL: '#F79F1F',
+    TIRED: '#6C5CE7',
+    STRESSED: '#EE5253',
   },
 };
 
@@ -204,5 +260,4 @@ export const getTheme = (mode: ThemeMode = 'dark') => ({
   ...commonMetrics,
 });
 
-// Default export for backward compatibility
 export const theme = getTheme('dark');

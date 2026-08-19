@@ -1,40 +1,42 @@
-# TaskFlow Pro 🚀
+# TickFlow Pro 🚀
 
-> **Cross-Platform Task, Reminder, Progress Monitor & Daily Activity Journal System**  
-> Runs simultaneously on **Android Mobile** and **Web Browsers** (React Native / Expo) powered by a **FastAPI** backend with seamless dual-database support (**SQLite** local & **Neon PostgreSQL** cloud).  
-> 🔗 **GitHub Repository**: [https://github.com/kirans0325/my-to-do.git](https://github.com/kirans0325/my-to-do.git)
+> **TickTick-Inspired Cross-Platform Task, Habit Tracker, Reminder, Progress Monitor & Daily Activity Journal System**  
+> Runs simultaneously on **Android Mobile** and **Web Browsers** (React Native / Expo) powered by a **FastAPI** backend with cloud **Neon PostgreSQL** database.  
+> 🔗 **GitHub Repository**: [https://github.com/kirans0325/my-to-do.git](https://github.com/kirans0325/my-to-do.git)  
+> 🌐 **Deploy to Vercel**: Ready for 1-click deployment with serverless FastAPI backend and static web SPA.
 
 ---
 
-## 🌟 Key Features
+## 🌟 Key Features (TickTick-Inspired Experience)
 
-1. **Flexible Reminders & Tasks**:
-   - **Daily Habits & Routines** (e.g. daily exercise, standups, hydration).
-   - **Monthly Deadlines & Bills** (e.g. server backups, rent, credit card billing).
-   - **Yearly Milestones & Renewals** (e.g. vehicle insurance, annual taxes).
-   - **One-Time Action Items**.
-   - Subtasks & milestone checklists with automatic ratio-based progress calculation.
-
-2. **⚡ Overdue Detection & Alert Center**:
+1. **✨ Daily Habit Check-in Rings**:
+   - One-tap circular habit rings (💧 Hydration, 🏃 Fitness, 📚 Study, 💻 Deep Work) with daily streak tracking.
+2. **⚡ Floating Quick-Add Action Button (FAB)**:
+   - Instant bottom action button for adding tasks, habits, and daily diary reflections.
+3. **🚩 Priority Flags & Eisenhower Views**:
+   - 🔴 High, 🟡 Medium, 🔵 Low, and ⚪ None priority flags with quick filtering.
+4. **Flexible Reminders & Recurrence**:
+   - **Daily Habits & Routines**, **Monthly Deadlines & Bills**, **Yearly Renewals**, **One-Time Tasks**.
+   - Subtasks & milestone checklists with ratio-based progress calculation.
+5. **⚡ Overdue Detection & Alert Center**:
    - Real-time overdue detector runs in the background.
    - High-visibility banner on the Dashboard when action is required.
    - Alert center with single-click "Mark Done" or "Acknowledge Alert" actions.
+6. **📔 Daily Diary & Activity Notes**:
+   - Daily reflections, mood ratings (🤩 Great, 😊 Good, 😐 Neutral, 🥱 Tired, 🤯 Stressed), productivity scoring (1–10), and activity timeline with timestamps.
+7. **💾 Cloud Neon PostgreSQL Database**:
+   - All tasks, subtasks, habits, daily diary notes, and stats are saved directly to Neon Cloud PostgreSQL (`ep-wandering-field-azbbut6k-pooler.c-3.ap-southeast-1.aws.neon.tech`).
 
-3. **📊 Progress Monitor & Streak Tracker**:
-   - 0–100% progress tracking with steppers (`-10%`, `+10%`, `Complete`).
-   - Active daily streak counter (🔥) to encourage consistency.
-   - Visual analytics across Daily vs Monthly vs Yearly frequencies and categories.
+---
 
-4. **📔 Daily Diary & Activity Journal**:
-   - Log daily thoughts, accomplishments, challenges, and ideas.
-   - Mood rating (🤩 Great, 😊 Good, 😐 Neutral, 🥱 Tired, 🤯 Stressed).
-   - Productivity score (1–10).
-   - Daily activity timeline with timestamps and completion status.
-   - Saved directly to your database (SQLite or Neon PostgreSQL).
+## 🌐 Deploy to Vercel (1-Click Hosting)
 
-5. **💾 Dual-Database Architecture**:
-   - **Local SQLite** (`sqlite+aiosqlite:///./local_tasks.db`): Zero setup needed for offline/local development.
-   - **Neon Cloud PostgreSQL** (`postgresql+asyncpg://...`): Switch to serverless cloud database with one environment variable change.
+The repository includes [`vercel.json`](file:///e:/code/my-web-site/my-todo/vercel.json) and [`api/index.py`](file:///e:/code/my-web-site/my-todo/api/index.py) to host both the FastAPI backend and React Native Web frontend together on Vercel:
+
+1. Import your GitHub repository `https://github.com/kirans0325/my-to-do.git` on [Vercel Dashboard](https://vercel.com/new).
+2. Set Environment Variable in Vercel project settings:
+   - `DATABASE_URL`: `postgresql://neondb_owner:npg_quZx1kJWj0zr@ep-wandering-field-azbbut6k-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require`
+3. Click **Deploy**! Vercel will build and serve your app globally with free SSL and serverless API endpoints.
 
 ---
 

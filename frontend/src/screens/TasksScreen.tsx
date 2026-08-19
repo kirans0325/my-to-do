@@ -11,6 +11,7 @@ import {
 import { getTheme } from '../utils/theme';
 import { useAppStore } from '../state/useAppStore';
 import { TaskCard } from '../components/TaskCard';
+import { FloatingQuickAdd } from '../components/FloatingQuickAdd';
 import { Task } from '../types';
 
 export const TasksScreen: React.FC = () => {
@@ -31,14 +32,14 @@ export const TasksScreen: React.FC = () => {
 
   const filterTabs = [
     { id: 'ALL', label: 'All Tasks' },
-    { id: 'DAILY', label: 'Daily Routine' },
-    { id: 'MONTHLY', label: 'Monthly Reminders' },
-    { id: 'YEARLY', label: 'Yearly Reminders' },
+    { id: 'DAILY', label: 'Daily Habits' },
+    { id: 'MONTHLY', label: 'Monthly' },
+    { id: 'YEARLY', label: 'Yearly' },
     { id: 'OVERDUE', label: '⚠️ Overdue' },
     { id: 'COMPLETED', label: '✓ Done' },
   ] as const;
 
-  // Memoized filter calculation to avoid unnecessary re-filtering on unrelated state changes
+  // Memoized filter calculation
   const filteredTasks = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
@@ -82,7 +83,7 @@ export const TasksScreen: React.FC = () => {
 
   const ListHeader = (
     <View>
-      {/* Search Input Bar */}
+      {/* TickTick-style Search Bar */}
       <View
         style={[
           styles.searchBar,
@@ -107,7 +108,7 @@ export const TasksScreen: React.FC = () => {
         ) : null}
       </View>
 
-      {/* Recurrence & Status Filter Tabs */}
+      {/* TickTick Views Tabs */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -150,7 +151,7 @@ export const TasksScreen: React.FC = () => {
         })}
       </ScrollView>
 
-      {/* Category Pills */}
+      {/* Category Filter Pills */}
       {categories.length > 0 && (
         <ScrollView
           horizontal
@@ -233,7 +234,7 @@ export const TasksScreen: React.FC = () => {
       {/* Task Count Header */}
       <View style={styles.countRow}>
         <Text style={[styles.countText, { color: currentTheme.colors.textSecondary }]}>
-          Showing {filteredTasks.length} task{filteredTasks.length === 1 ? '' : 's'}
+          {filteredTasks.length} task{filteredTasks.length === 1 ? '' : 's'}
         </Text>
         <TouchableOpacity onPress={() => setCreateTaskModalOpen(true)}>
           <Text style={[styles.addTaskText, { color: currentTheme.colors.primary }]}>
@@ -256,37 +257,40 @@ export const TasksScreen: React.FC = () => {
     >
       <Text style={styles.emptyIcon}>📋</Text>
       <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>
-        No matching tasks found
+        No tasks in this list
       </Text>
       <Text style={[styles.emptySubtitle, { color: currentTheme.colors.textSecondary }]}>
         {searchQuery || selectedCategoryFilter !== null
           ? 'Try adjusting your search query or filters.'
-          : 'Add your first task or reminder using the button below!'}
+          : 'Tap the + button below to create your first task!'}
       </Text>
       <TouchableOpacity
         style={[styles.emptyAddBtn, { backgroundColor: currentTheme.colors.primary }]}
         onPress={() => setCreateTaskModalOpen(true)}
       >
-        <Text style={styles.emptyAddBtnText}>+ Create Task</Text>
+        <Text style={styles.emptyAddBtnText}>+ New Task</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <FlatList
-      data={filteredTasks}
-      keyExtractor={keyExtractor}
-      renderItem={renderTaskItem}
-      ListHeaderComponent={ListHeader}
-      ListEmptyComponent={ListEmptyComponent}
-      style={[styles.container, { backgroundColor: currentTheme.colors.background }]}
-      contentContainerStyle={styles.contentContainer}
-      initialNumToRender={8}
-      maxToRenderPerBatch={10}
-      windowSize={5}
-      removeClippedSubviews={true}
-      showsVerticalScrollIndicator={false}
-    />
+    <View style={{ flex: 1 }}>
+      <FlatList
+        data={filteredTasks}
+        keyExtractor={keyExtractor}
+        renderItem={renderTaskItem}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={ListEmptyComponent}
+        style={[styles.container, { backgroundColor: currentTheme.colors.background }]}
+        contentContainerStyle={styles.contentContainer}
+        initialNumToRender={8}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
+        showsVerticalScrollIndicator={false}
+      />
+      <FloatingQuickAdd />
+    </View>
   );
 };
 
@@ -295,16 +299,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
-    paddingBottom: 80,
+    padding: 16,
+    paddingBottom: 90,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 14,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 10,
     borderWidth: 1,
     gap: 8,
   },
@@ -320,22 +324,22 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   tabsScroll: {
-    marginBottom: 10,
+    marginBottom: 8,
   },
   tabsContainer: {
-    gap: 8,
+    gap: 6,
   },
   filterTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
   },
   filterTabText: {
     fontSize: 12,
   },
   categoryScroll: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   categoryContainer: {
     gap: 6,
@@ -343,11 +347,11 @@ const styles = StyleSheet.create({
   catPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 9999,
     borderWidth: 1,
-    gap: 6,
+    gap: 5,
   },
   catDot: {
     width: 6,
@@ -361,7 +365,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   countText: {
     fontSize: 12,
@@ -372,15 +376,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   emptyState: {
-    borderRadius: 16,
-    padding: 32,
+    borderRadius: 14,
+    padding: 28,
     alignItems: 'center',
     borderWidth: 1,
-    marginTop: 14,
+    marginTop: 10,
   },
   emptyIcon: {
-    fontSize: 36,
-    marginBottom: 8,
+    fontSize: 32,
+    marginBottom: 6,
   },
   emptyTitle: {
     fontSize: 15,
@@ -390,13 +394,13 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 12,
     textAlign: 'center',
-    maxWidth: 320,
-    marginBottom: 16,
+    maxWidth: 300,
+    marginBottom: 14,
   },
   emptyAddBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 8,
   },
   emptyAddBtnText: {
     color: '#FFFFFF',

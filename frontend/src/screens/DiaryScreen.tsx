@@ -9,6 +9,7 @@ import {
 import { getTheme } from '../utils/theme';
 import { useAppStore } from '../state/useAppStore';
 import { DiaryCard } from '../components/DiaryCard';
+import { FloatingQuickAdd } from '../components/FloatingQuickAdd';
 import { getTodayDateString } from '../utils/dateUtils';
 
 export const DiaryScreen: React.FC = () => {
@@ -24,79 +25,84 @@ export const DiaryScreen: React.FC = () => {
   const todayStr = getTodayDateString();
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: currentTheme.colors.background }]}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header Banner */}
-      <View
-        style={[
-          styles.banner,
-          {
-            backgroundColor: currentTheme.colors.surface,
-            borderColor: currentTheme.colors.cardBorder,
-          },
-        ]}
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: currentTheme.colors.background }]}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.bannerInfo}>
-          <Text style={[styles.bannerTitle, { color: currentTheme.colors.text }]}>
-            📖 Daily Diary & Activity Journal
-          </Text>
-          <Text style={[styles.bannerSubtitle, { color: currentTheme.colors.textSecondary }]}>
-            Capture daily reflections, habits, productivity scores, and activity timelines saved directly to your database.
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.newEntryBtn, { backgroundColor: currentTheme.colors.primary }]}
-          onPress={() => {
-            setSelectedDiaryDate(todayStr);
-            setCreateDiaryModalOpen(true);
-          }}
-        >
-          <Text style={styles.newEntryBtnText}>+ Today's Log</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Diary Timeline Entries */}
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
-          Journal History ({diaryEntries.length} Recorded Days)
-        </Text>
-      </View>
-
-      {diaryEntries.length > 0 ? (
-        diaryEntries.map((entry) => <DiaryCard key={entry.id} entry={entry} />)
-      ) : (
+        {/* TickTick Header Banner */}
         <View
           style={[
-            styles.emptyState,
+            styles.banner,
             {
               backgroundColor: currentTheme.colors.surface,
               borderColor: currentTheme.colors.cardBorder,
             },
           ]}
         >
-          <Text style={styles.emptyIcon}>✍️</Text>
-          <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>
-            No diary entries yet
-          </Text>
-          <Text style={[styles.emptySubtitle, { color: currentTheme.colors.textSecondary }]}>
-            Start journaling your daily milestones, mood ratings, and timeline activities!
-          </Text>
+          <View style={styles.bannerInfo}>
+            <Text style={[styles.bannerTitle, { color: currentTheme.colors.text }]}>
+              📖 Daily Diary & Notes
+            </Text>
+            <Text style={[styles.bannerSubtitle, { color: currentTheme.colors.textSecondary }]}>
+              Track reflections, habit notes, mood ratings, and timeline activities saved to Neon Cloud DB.
+            </Text>
+          </View>
+
           <TouchableOpacity
             style={[styles.newEntryBtn, { backgroundColor: currentTheme.colors.primary }]}
             onPress={() => {
               setSelectedDiaryDate(todayStr);
               setCreateDiaryModalOpen(true);
             }}
+            activeOpacity={0.8}
           >
-            <Text style={styles.newEntryBtnText}>+ Write First Diary Entry</Text>
+            <Text style={styles.newEntryBtnText}>+ Today's Note</Text>
           </TouchableOpacity>
         </View>
-      )}
-    </ScrollView>
+
+        {/* Diary Timeline Entries */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
+            Journal Notes ({diaryEntries.length} Recorded Days)
+          </Text>
+        </View>
+
+        {diaryEntries.length > 0 ? (
+          diaryEntries.map((entry) => <DiaryCard key={entry.id} entry={entry} />)
+        ) : (
+          <View
+            style={[
+              styles.emptyState,
+              {
+                backgroundColor: currentTheme.colors.surface,
+                borderColor: currentTheme.colors.cardBorder,
+              },
+            ]}
+          >
+            <Text style={styles.emptyIcon}>✍️</Text>
+            <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>
+              No diary notes yet
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: currentTheme.colors.textSecondary }]}>
+              Write down your thoughts, daily wins, productivity rating, and timeline activities!
+            </Text>
+            <TouchableOpacity
+              style={[styles.newEntryBtn, { backgroundColor: currentTheme.colors.primary }]}
+              onPress={() => {
+                setSelectedDiaryDate(todayStr);
+                setCreateDiaryModalOpen(true);
+              }}
+            >
+              <Text style={styles.newEntryBtnText}>+ Write First Diary Note</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+
+      <FloatingQuickAdd />
+    </View>
   );
 };
 
@@ -105,45 +111,45 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
-    paddingBottom: 80,
+    padding: 16,
+    paddingBottom: 90,
   },
   banner: {
-    borderRadius: 18,
-    padding: 20,
-    marginBottom: 20,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 14,
+    gap: 12,
   },
   bannerInfo: {
     flex: 1,
-    minWidth: 240,
+    minWidth: 200,
   },
   bannerTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     marginBottom: 4,
   },
   bannerSubtitle: {
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 16,
   },
   newEntryBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   newEntryBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   sectionHeader: {
-    marginBottom: 12,
+    marginBottom: 10,
   },
   sectionTitle: {
     fontSize: 11,
@@ -152,14 +158,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   emptyState: {
-    borderRadius: 16,
-    padding: 32,
+    borderRadius: 14,
+    padding: 28,
     alignItems: 'center',
     borderWidth: 1,
   },
   emptyIcon: {
-    fontSize: 36,
-    marginBottom: 8,
+    fontSize: 32,
+    marginBottom: 6,
   },
   emptyTitle: {
     fontSize: 15,
@@ -169,7 +175,7 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 12,
     textAlign: 'center',
-    maxWidth: 320,
-    marginBottom: 16,
+    maxWidth: 300,
+    marginBottom: 14,
   },
 });

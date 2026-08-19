@@ -11,12 +11,19 @@ export const Header: React.FC = () => {
     toggleTheme,
     setActiveTab,
     setCreateTaskModalOpen,
-    setCreateDiaryModalOpen,
   } = useAppStore();
 
   const currentTheme = getTheme(themeMode);
   const unackCount = reminders.length;
-  const streak = stats?.current_streak_days || 0;
+  const streak = stats?.current_streak_days || 1;
+
+  // Format today's date TickTick-style
+  const now = new Date();
+  const dateFormatted = now.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 
   return (
     <View
@@ -28,28 +35,29 @@ export const Header: React.FC = () => {
         },
       ]}
     >
+      {/* Brand & Date */}
       <View style={styles.brandRow}>
         <View
           style={[
             styles.logoBadge,
             {
               backgroundColor: currentTheme.colors.primary,
-              shadowColor: currentTheme.colors.primary,
             },
           ]}
         >
           <Text style={styles.logoText}>✓</Text>
         </View>
         <View>
-          <Text style={[styles.title, { color: currentTheme.colors.text }]}>TaskFlow Pro</Text>
+          <Text style={[styles.title, { color: currentTheme.colors.text }]}>TickFlow</Text>
           <Text style={[styles.subtitle, { color: currentTheme.colors.textMuted }]}>
-            Tasks • Reminders • Daily Diary
+            {dateFormatted} • ☁️ Neon DB
           </Text>
         </View>
       </View>
 
+      {/* Quick Action Badges */}
       <View style={styles.actionsRow}>
-        {/* Streak Badge */}
+        {/* Streak Pill */}
         <View
           style={[
             styles.streakBadge,
@@ -61,14 +69,14 @@ export const Header: React.FC = () => {
         >
           <Text style={styles.streakEmoji}>🔥</Text>
           <Text style={[styles.streakText, { color: currentTheme.colors.warning }]}>
-            {streak} Day{streak === 1 ? '' : 's'} Streak
+            {streak}d
           </Text>
         </View>
 
-        {/* Theme Switcher Toggle (☀️ Light / 🌙 Dark) */}
+        {/* Theme Switcher Toggle (☀️ / 🌙) */}
         <TouchableOpacity
           style={[
-            styles.themeToggleBtn,
+            styles.iconBtn,
             {
               backgroundColor: currentTheme.colors.surfaceLight,
               borderColor: currentTheme.colors.cardBorder,
@@ -76,9 +84,9 @@ export const Header: React.FC = () => {
           ]}
           onPress={toggleTheme}
           activeOpacity={0.7}
-          accessibilityLabel="Toggle Light or Dark Mode"
+          accessibilityLabel="Toggle Light/Dark Theme"
         >
-          <Text style={styles.themeToggleIcon}>
+          <Text style={styles.btnIcon}>
             {themeMode === 'dark' ? '☀️' : '🌙'}
           </Text>
         </TouchableOpacity>
@@ -86,18 +94,17 @@ export const Header: React.FC = () => {
         {/* Alert Bell */}
         <TouchableOpacity
           style={[
-            styles.alertButton,
-            { backgroundColor: currentTheme.colors.surfaceLight },
+            styles.iconBtn,
+            { backgroundColor: currentTheme.colors.surfaceLight, borderColor: currentTheme.colors.cardBorder },
             unackCount > 0 && {
               backgroundColor: currentTheme.colors.dangerLight,
               borderColor: currentTheme.colors.danger,
-              borderWidth: 1,
             },
           ]}
           onPress={() => setActiveTab('alerts')}
           activeOpacity={0.7}
         >
-          <Text style={styles.alertIcon}>🔔</Text>
+          <Text style={styles.btnIcon}>🔔</Text>
           {unackCount > 0 && (
             <View style={[styles.badge, { backgroundColor: currentTheme.colors.danger }]}>
               <Text style={styles.badgeText}>{unackCount}</Text>
@@ -105,29 +112,13 @@ export const Header: React.FC = () => {
           )}
         </TouchableOpacity>
 
-        {/* Quick Action Buttons */}
-        <TouchableOpacity
-          style={[
-            styles.diaryButton,
-            {
-              backgroundColor: currentTheme.colors.surfaceLight,
-              borderColor: currentTheme.colors.cardBorder,
-            },
-          ]}
-          onPress={() => setCreateDiaryModalOpen(true)}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.diaryButtonText, { color: currentTheme.colors.text }]}>
-            + Daily Log
-          </Text>
-        </TouchableOpacity>
-
+        {/* Add Task Button */}
         <TouchableOpacity
           style={[styles.createButton, { backgroundColor: currentTheme.colors.primary }]}
           onPress={() => setCreateTaskModalOpen(true)}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
-          <Text style={styles.createButtonText}>+ New Task</Text>
+          <Text style={styles.createButtonText}>+ Add</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -139,8 +130,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     flexWrap: 'wrap',
     gap: 8,
@@ -148,25 +139,22 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   logoBadge: {
-    width: 38,
-    height: 38,
+    width: 34,
+    height: 34,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
   },
   logoText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
-    fontSize: 20,
+    fontSize: 18,
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
@@ -178,75 +166,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flexWrap: 'wrap',
   },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 9999,
     borderWidth: 1,
-    gap: 4,
+    gap: 3,
   },
   streakEmoji: {
-    fontSize: 13,
+    fontSize: 12,
   },
   streakText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  themeToggleBtn: {
-    width: 38,
-    height: 38,
+  iconBtn: {
+    width: 36,
+    height: 36,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  themeToggleIcon: {
-    fontSize: 16,
-  },
-  alertButton: {
     position: 'relative',
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  alertIcon: {
-    fontSize: 16,
+  btnIcon: {
+    fontSize: 15,
   },
   badge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    borderRadius: 9,
-    minWidth: 18,
-    height: 18,
+    top: -3,
+    right: -3,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 3,
   },
   badgeText: {
     color: '#FFF',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
-  },
-  diaryButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  diaryButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
   },
   createButton: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 10,
   },
   createButtonText: {
