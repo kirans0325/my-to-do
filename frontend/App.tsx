@@ -140,13 +140,19 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    height: '100%',
+    width: '100%',
   },
   appContainer: {
     flex: 1,
+    height: '100%',
     width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
   },
   mainContent: {
     flex: 1,
+    height: '100%',
   },
   syncingBar: {
     flexDirection: 'row',
