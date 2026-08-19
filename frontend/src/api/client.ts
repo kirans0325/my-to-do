@@ -4,7 +4,9 @@ import { Platform } from 'react-native';
 // 💡 TIP: When installing the APK on your physical Android phone:
 // If running FastAPI on your computer, set your computer's Wi-Fi IP address below (e.g. 'http://192.168.1.15:8000/api/v1')
 // If backend is deployed to cloud (Render, Railway, Fly.io), set your cloud URL.
-const CUSTOM_BACKEND_URL: string | null = null; // e.g. "http://192.168.1.15:8000/api/v1"
+// Cloud Production Backend URL on Vercel
+const VERCEL_CLOUD_URL = 'https://mytask-flow.vercel.app/api/v1';
+const CUSTOM_BACKEND_URL: string | null = null;
 
 const getBaseUrl = (): string => {
   if (CUSTOM_BACKEND_URL) {
@@ -13,21 +15,21 @@ const getBaseUrl = (): string => {
 
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined' && window.location) {
+      // In local development web browser on port 8081 / 19006 / 3000
+      if (window.location.port === '8081' || window.location.port === '19006' || window.location.port === '3000') {
+        if (window.location.hostname) {
+          return `http://${window.location.hostname}:8000/api/v1`;
+        }
+      }
       // In Vercel / Production web hosting (same origin /api/v1)
-      if (window.location.port !== '8081' && window.location.port !== '19006' && window.location.port !== '3000') {
-        return `${window.location.origin}/api/v1`;
-      }
-      // In local development web browser
-      if (window.location.hostname) {
-        return `http://${window.location.hostname}:8000/api/v1`;
-      }
+      return `${window.location.origin}/api/v1`;
     }
-    return 'http://localhost:8000/api/v1';
-  } else if (Platform.OS === 'android') {
-    // In Android Mobile connected via Hotspot (Your laptop's hotspot IP is 10.130.151.61)
-    return 'http://10.130.151.61:8000/api/v1';
+    return VERCEL_CLOUD_URL;
+  } else if (Platform.OS === 'android' || Platform.OS === 'ios') {
+    // In Android APK or iOS: Connect directly to your live Vercel Cloud Backend & Neon DB
+    return VERCEL_CLOUD_URL;
   }
-  return 'http://localhost:8000/api/v1';
+  return VERCEL_CLOUD_URL;
 };
 
 export const apiClient = axios.create({
