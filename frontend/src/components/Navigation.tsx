@@ -3,19 +3,26 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { getTheme } from '../utils/theme';
 import { useAppStore } from '../state/useAppStore';
 
+interface NavItem {
+  id: 'dashboard' | 'tasks' | 'diary' | 'alerts' | 'analytics';
+  label: string;
+  icon: string;
+  badge?: number;
+}
+
 export const Navigation: React.FC = () => {
   const { activeTab, setActiveTab, reminders, themeMode } = useAppStore();
   const currentTheme = getTheme(themeMode);
 
   const unackAlerts = reminders.filter((r) => !r.is_acknowledged).length;
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '⚡' },
     { id: 'tasks', label: 'Tasks & Reminders', icon: '📋' },
     { id: 'diary', label: 'Daily Diary', icon: '📔' },
     { id: 'alerts', label: 'Alert Center', icon: '🔔', badge: unackAlerts },
     { id: 'analytics', label: 'Analytics', icon: '📊' },
-  ] as const;
+  ];
 
   return (
     <View
@@ -43,7 +50,7 @@ export const Navigation: React.FC = () => {
           >
             <View style={styles.iconContainer}>
               <Text style={styles.icon}>{item.icon}</Text>
-              {'badge' in item && item.badge ? item.badge > 0 ? (
+              {Boolean(item.badge && item.badge > 0) && (
                 <View
                   style={[
                     styles.badge,
@@ -52,7 +59,7 @@ export const Navigation: React.FC = () => {
                 >
                   <Text style={styles.badgeText}>{item.badge}</Text>
                 </View>
-              ) : null : null}
+              )}
             </View>
             <Text
               style={[

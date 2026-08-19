@@ -6,6 +6,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   StatusBar,
+  TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { getTheme } from './src/utils/theme';
 import { useAppStore } from './src/state/useAppStore';
@@ -54,12 +56,16 @@ export default function App() {
     <SafeAreaView
       style={[
         styles.safeArea,
-        { backgroundColor: currentTheme.colors.background },
+        {
+          backgroundColor: currentTheme.colors.background,
+          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
+        },
       ]}
     >
       <StatusBar
         barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'}
         backgroundColor={currentTheme.colors.surface}
+        translucent={Platform.OS === 'android'}
       />
 
       <View
@@ -71,51 +77,53 @@ export default function App() {
         {/* Top Header */}
         <Header />
 
-        {/* Error Warning Banner if backend not reachable */}
+        {/* Top Syncing Indicator (non-blocking) */}
+        {isLoading && (
+          <View
+            style={[
+              styles.syncingBar,
+              { backgroundColor: currentTheme.colors.primaryLight },
+            ]}
+          >
+            <ActivityIndicator size="small" color={currentTheme.colors.primary} />
+            <Text style={[styles.syncingText, { color: currentTheme.colors.primary }]}>
+              Syncing with backend...
+            </Text>
+          </View>
+        )}
+
+        {/* Notice Banner if offline */}
         {error && (
           <View
             style={[
               styles.errorBanner,
               {
-                backgroundColor: currentTheme.colors.dangerLight,
-                borderBottomColor: `${currentTheme.colors.danger}44`,
+                backgroundColor: currentTheme.colors.surfaceLight,
+                borderBottomColor: currentTheme.colors.cardBorder,
               },
             ]}
           >
             <Text
               style={[
                 styles.errorText,
-                { color: currentTheme.colors.danger },
+                { color: currentTheme.colors.textSecondary },
               ]}
+              numberOfLines={1}
             >
-              📡 Backend Offline: Start FastAPI on your laptop (port 8000).
+              📱 Local Mode • Backend: 10.130.151.61:8000
             </Text>
             <TouchableOpacity
-              style={[styles.retryBtn, { backgroundColor: currentTheme.colors.danger }]}
+              style={[styles.retryBtn, { backgroundColor: currentTheme.colors.primary }]}
               onPress={fetchAllData}
             >
-              <Text style={styles.retryBtnText}>🔄 Retry</Text>
+              <Text style={styles.retryBtnText}>🔄 Connect</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Main Content Area */}
+        {/* Main Content Area - Always Rendered */}
         <View style={styles.mainContent}>
-          {isLoading && !error ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={currentTheme.colors.primary} />
-              <Text
-                style={[
-                  styles.loadingText,
-                  { color: currentTheme.colors.textSecondary },
-                ]}
-              >
-                Syncing TaskFlow Pro...
-              </Text>
-            </View>
-          ) : (
-            renderActiveScreen()
-          )}
+          {renderActiveScreen()}
         </View>
 
         {/* Navigation Bar */}
@@ -135,22 +143,21 @@ const styles = StyleSheet.create({
   },
   appContainer: {
     flex: 1,
-    maxWidth: 1200,
     width: '100%',
-    alignSelf: 'center',
   },
   mainContent: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  syncingBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    paddingVertical: 4,
+    gap: 8,
   },
-  loadingText: {
-    fontSize: 14,
-    fontWeight: '600',
+  syncingText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   errorBanner: {
     paddingHorizontal: 16,
@@ -162,7 +169,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     flex: 1,
   },

@@ -1,11 +1,123 @@
 import { create } from 'zustand';
-import { Task, Category, ReminderLog, AlertSummary, DiaryEntry, OverviewStats, TaskCreateInput, DiaryCreateInput } from '../types';
+import {
+  Task,
+  Category,
+  ReminderLog,
+  AlertSummary,
+  DiaryEntry,
+  OverviewStats,
+  TaskCreateInput,
+  DiaryCreateInput,
+} from '../types';
 import { taskApi } from '../api/taskApi';
 import { diaryApi } from '../api/diaryApi';
 import { statsApi } from '../api/statsApi';
 import { getTodayDateString } from '../utils/dateUtils';
-
 import { ThemeMode, getTheme } from '../utils/theme';
+
+const defaultCategories: Category[] = [
+  { id: 1, name: 'Work', color: '#6366F1', icon: 'briefcase' },
+  { id: 2, name: 'Personal', color: '#10B981', icon: 'user' },
+  { id: 3, name: 'Health', color: '#F59E0B', icon: 'heart' },
+  { id: 4, name: 'Finance', color: '#8B5CF6', icon: 'credit-card' },
+];
+
+const defaultTasks: Task[] = [
+  {
+    id: 1,
+    title: 'Daily Standup & Goal Review',
+    description: 'Review daily priority tasks and milestones',
+    recurrence_type: 'DAILY',
+    recurrence_interval: 1,
+    priority: 'HIGH',
+    status: 'PENDING',
+    progress_percentage: 50,
+    category_id: 1,
+    category: defaultCategories[0],
+    subtasks: [
+      { id: 1, title: 'Check emails and notifications', completed: true },
+      { id: 2, title: 'Plan top 3 daily priorities', completed: false },
+    ],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 2,
+    title: '30-Minute Evening Workout / Walk',
+    description: 'Daily fitness and physical activity routine',
+    recurrence_type: 'DAILY',
+    recurrence_interval: 1,
+    priority: 'MEDIUM',
+    status: 'PENDING',
+    progress_percentage: 0,
+    category_id: 3,
+    category: defaultCategories[2],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 3,
+    title: 'Monthly Server Backup & Cloud Sync',
+    description: 'Backup local tasks database to cloud storage',
+    recurrence_type: 'MONTHLY',
+    recurrence_interval: 1,
+    priority: 'HIGH',
+    status: 'PENDING',
+    progress_percentage: 20,
+    category_id: 1,
+    category: defaultCategories[0],
+    due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+];
+
+const defaultStats: OverviewStats = {
+  total_tasks: defaultTasks.length,
+  completed_tasks: 0,
+  in_progress_tasks: 2,
+  pending_tasks: 1,
+  overdue_tasks: 0,
+  overall_completion_rate: 23.3,
+  current_streak_days: 1,
+  daily_stats: {
+    total: 2,
+    completed: 0,
+    overdue: 0,
+    in_progress: 1,
+    completion_rate: 25.0
+  },
+  monthly_stats: {
+    total: 1,
+    completed: 0,
+    overdue: 0,
+    in_progress: 1,
+    completion_rate: 20.0
+  },
+  yearly_stats: {
+    total: 0,
+    completed: 0,
+    overdue: 0,
+    in_progress: 0,
+    completion_rate: 0.0
+  },
+  one_time_stats: {
+    total: 0,
+    completed: 0,
+    overdue: 0,
+    in_progress: 0,
+    completion_rate: 0.0
+  },
+  categories: defaultCategories.map(c => ({
+    category_id: c.id,
+    category_name: c.name,
+    color: c.color,
+    total: c.id === 1 ? 2 : (c.id === 3 ? 1 : 0),
+    completed: 0
+  })),
+  total_diary_entries: 0,
+  average_productivity: 8.0
+};
 
 interface AppState {
   // Theme State
@@ -41,7 +153,7 @@ interface AppState {
   setCreateDiaryModalOpen: (open: boolean) => void;
   setSelectedDiaryDate: (dateStr: string) => void;
 
-  // Async API Actions
+  // Async API Actions with Offline Resiliency
   fetchAllData: () => Promise<void>;
   fetchTasks: () => Promise<void>;
   fetchDiaryEntries: () => Promise<void>;
@@ -74,12 +186,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   isCreateDiaryModalOpen: false,
   selectedDiaryDate: getTodayDateString(),
 
-  tasks: [],
-  categories: [],
+  tasks: defaultTasks,
+  categories: defaultCategories,
   reminders: [],
   alertSummary: null,
   diaryEntries: [],
-  stats: null,
+  stats: defaultStats,
   isLoading: false,
   error: null,
 
@@ -92,13 +204,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedDiaryDate: (dateStr) => set({ selectedDiaryDate: dateStr }),
 
   fetchAllData: async () => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true });
     try {
-      // First trigger background scan
       try {
         await taskApi.scanAlerts();
       } catch (e) {
-        // Continue even if scan fails
+        // Background scan optional
       }
 
       const [tasks, categories, reminders, alertSummary, diaryEntries, stats] = await Promise.all([
@@ -111,26 +222,30 @@ export const useAppStore = create<AppState>((set, get) => ({
       ]);
 
       set({
-        tasks,
-        categories,
+        tasks: tasks.length > 0 ? tasks : get().tasks,
+        categories: categories.length > 0 ? categories : defaultCategories,
         reminders,
         alertSummary,
         diaryEntries,
         stats,
-        isLoading: false
+        isLoading: false,
+        error: null
       });
     } catch (err: any) {
-      console.error('Fetch all error:', err);
-      set({ error: err.message || 'Failed to connect to backend server', isLoading: false });
+      console.warn('Backend connection offline, running in local mode:', err.message);
+      set({
+        error: 'Backend offline: Running in offline local mode (Hotspot IP: 10.130.151.61:8000)',
+        isLoading: false
+      });
     }
   },
 
   fetchTasks: async () => {
     try {
       const tasks = await taskApi.getTasks();
-      set({ tasks });
+      if (tasks.length > 0) set({ tasks });
     } catch (err: any) {
-      console.error('Fetch tasks error:', err);
+      console.warn('Fetch tasks offline fallback');
     }
   },
 
@@ -139,19 +254,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       const diaryEntries = await diaryApi.getDiaryEntries({ limit: 30 });
       set({ diaryEntries });
     } catch (err: any) {
-      console.error('Fetch diary error:', err);
+      console.warn('Fetch diary offline fallback');
     }
   },
 
   fetchAlerts: async () => {
     try {
-      const [reminders, alertSummary] = await Promise.all([
-        taskApi.getReminders(true),
-        taskApi.getAlertSummary()
-      ]);
+      const reminders = await taskApi.getReminders(true);
+      const alertSummary = await taskApi.getAlertSummary();
       set({ reminders, alertSummary });
     } catch (err: any) {
-      console.error('Fetch alerts error:', err);
+      console.warn('Fetch alerts offline fallback');
     }
   },
 
@@ -160,127 +273,196 @@ export const useAppStore = create<AppState>((set, get) => ({
       const stats = await statsApi.getOverviewStats();
       set({ stats });
     } catch (err: any) {
-      console.error('Fetch stats error:', err);
+      console.warn('Fetch stats offline fallback');
     }
   },
 
-  createTask: async (input) => {
+  createTask: async (input: TaskCreateInput) => {
     try {
       const newTask = await taskApi.createTask(input);
-      set((state) => ({ tasks: [newTask, ...state.tasks] }));
+      const category = get().categories.find((c) => c.id === input.category_id);
+      const taskWithCategory = { ...newTask, category };
+      set((state) => ({ tasks: [taskWithCategory, ...state.tasks] }));
       get().fetchStats();
-      get().fetchAlerts();
       return true;
     } catch (err: any) {
-      console.error('Create task error:', err);
-      return false;
+      const localId = Date.now();
+      const category = get().categories.find((c) => c.id === input.category_id);
+      const localTask: Task = {
+        id: localId,
+        title: input.title,
+        description: input.description,
+        recurrence_type: input.recurrence_type || 'NONE',
+        recurrence_interval: input.recurrence_interval || 1,
+        priority: input.priority || 'MEDIUM',
+        status: 'PENDING',
+        progress_percentage: 0,
+        category_id: input.category_id,
+        category,
+        due_date: input.due_date,
+        subtasks: input.subtasks || [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      set((state) => ({ tasks: [localTask, ...state.tasks] }));
+      return true;
     }
   },
 
-  updateTaskProgress: async (id, progress, note) => {
+  updateTaskProgress: async (id: number, progress: number, note?: string) => {
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              progress_percentage: progress,
+              status: progress >= 100 ? 'COMPLETED' : progress > 0 ? 'IN_PROGRESS' : 'PENDING'
+            }
+          : t
+      )
+    }));
     try {
-      const updated = await taskApi.updateProgress(id, progress, note);
-      set((state) => ({
-        tasks: state.tasks.map((t) => (t.id === id ? updated : t))
-      }));
+      await taskApi.updateProgress(id, progress, note);
       get().fetchStats();
-      get().fetchAlerts();
-    } catch (err: any) {
-      console.error('Update progress error:', err);
+    } catch (err) {
+      // Offline
     }
   },
 
-  toggleTaskComplete: async (id) => {
+  toggleTaskComplete: async (id: number) => {
+    const task = get().tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    const newStatus = task.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
+    const newProgress = newStatus === 'COMPLETED' ? 100 : 0;
+
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              status: newStatus,
+              progress_percentage: newProgress,
+              completed_at: newStatus === 'COMPLETED' ? new Date().toISOString() : undefined
+            }
+          : t
+      )
+    }));
+
     try {
-      const updated = await taskApi.completeTask(id);
-      set((state) => ({
-        tasks: state.tasks.map((t) => (t.id === id ? updated : t))
-      }));
+      if (newStatus === 'COMPLETED' && task.recurrence_type !== 'NONE') {
+        const updated = await taskApi.completeTask(id);
+        set((state) => ({
+          tasks: state.tasks.map((t) => (t.id === id ? { ...updated, category: t.category } : t))
+        }));
+      } else {
+        await taskApi.updateProgress(id, newProgress);
+      }
       get().fetchStats();
-      get().fetchAlerts();
-    } catch (err: any) {
-      console.error('Complete task error:', err);
+    } catch (err) {
+      // Offline
     }
   },
 
-  toggleSubtask: async (taskId, subtaskId) => {
+  toggleSubtask: async (taskId: number, subtaskId: number) => {
+    const task = get().tasks.find((t) => t.id === taskId);
+    if (!task || !task.subtasks) return;
+
+    const updatedSubtasks = task.subtasks.map((st) =>
+      st.id === subtaskId ? { ...st, completed: !st.completed } : st
+    );
+
+    const completedCount = updatedSubtasks.filter((st) => st.completed).length;
+    const progress = Math.round((completedCount / updatedSubtasks.length) * 100);
+
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              subtasks: updatedSubtasks,
+              progress_percentage: progress,
+              status: progress >= 100 ? 'COMPLETED' : progress > 0 ? 'IN_PROGRESS' : 'PENDING'
+            }
+          : t
+      )
+    }));
+
     try {
-      const updated = await taskApi.toggleSubtask(taskId, subtaskId);
-      set((state) => ({
-        tasks: state.tasks.map((t) => (t.id === taskId ? updated : t))
-      }));
+      await taskApi.toggleSubtask(taskId, subtaskId);
       get().fetchStats();
-    } catch (err: any) {
-      console.error('Toggle subtask error:', err);
+    } catch (err) {
+      // Offline
     }
   },
 
-  deleteTask: async (id) => {
+  deleteTask: async (id: number) => {
+    set((state) => ({ tasks: state.tasks.filter((t) => t.id !== id) }));
     try {
       await taskApi.deleteTask(id);
-      set((state) => ({
-        tasks: state.tasks.filter((t) => t.id !== id)
-      }));
       get().fetchStats();
-      get().fetchAlerts();
-    } catch (err: any) {
-      console.error('Delete task error:', err);
+    } catch (err) {
+      // Offline
     }
   },
 
-  saveDiaryEntry: async (input) => {
+  saveDiaryEntry: async (input: DiaryCreateInput) => {
     try {
       const saved = await diaryApi.saveDiaryEntry(input);
       set((state) => {
-        const existingIdx = state.diaryEntries.findIndex((d) => d.entry_date === input.entry_date);
-        let updatedList: DiaryEntry[];
-        if (existingIdx >= 0) {
-          updatedList = [...state.diaryEntries];
-          updatedList[existingIdx] = saved;
-        } else {
-          updatedList = [saved, ...state.diaryEntries];
-        }
-        return { diaryEntries: updatedList };
+        const filtered = state.diaryEntries.filter((d) => d.entry_date !== input.entry_date);
+        return { diaryEntries: [saved, ...filtered] };
       });
       get().fetchStats();
       return true;
-    } catch (err: any) {
-      console.error('Save diary error:', err);
-      return false;
+    } catch (err) {
+      const localEntry: DiaryEntry = {
+        id: Date.now(),
+        entry_date: input.entry_date,
+        title: input.title,
+        content: input.content,
+        mood: input.mood || 'GOOD',
+        productivity_score: input.productivity_score || 8,
+        tags: input.tags,
+        activities: input.activities || [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      set((state) => {
+        const filtered = state.diaryEntries.filter((d) => d.entry_date !== input.entry_date);
+        return { diaryEntries: [localEntry, ...filtered] };
+      });
+      return true;
     }
   },
 
-  deleteDiaryEntry: async (id) => {
+  deleteDiaryEntry: async (id: number) => {
+    set((state) => ({ diaryEntries: state.diaryEntries.filter((d) => d.id !== id) }));
     try {
       await diaryApi.deleteDiaryEntry(id);
-      set((state) => ({
-        diaryEntries: state.diaryEntries.filter((d) => d.id !== id)
-      }));
       get().fetchStats();
-    } catch (err: any) {
-      console.error('Delete diary error:', err);
+    } catch (err) {
+      // Offline
     }
   },
 
-  acknowledgeAlert: async (id) => {
+  acknowledgeAlert: async (id: number) => {
+    set((state) => ({
+      reminders: state.reminders.filter((r) => r.id !== id)
+    }));
     try {
       await taskApi.acknowledgeReminder(id);
-      set((state) => ({
-        reminders: state.reminders.filter((r) => r.id !== id)
-      }));
-      get().fetchAlerts();
-    } catch (err: any) {
-      console.error('Ack alert error:', err);
+    } catch (err) {
+      // Offline
     }
   },
 
   acknowledgeAllAlerts: async () => {
+    set({ reminders: [] });
     try {
       await taskApi.acknowledgeAllReminders();
-      set({ reminders: [] });
-      get().fetchAlerts();
-    } catch (err: any) {
-      console.error('Ack all error:', err);
+    } catch (err) {
+      // Offline
     }
-  }
+  },
 }));
