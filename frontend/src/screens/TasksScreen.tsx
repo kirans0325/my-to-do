@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,12 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
+  FlatList,
 } from 'react-native';
 import { getTheme } from '../utils/theme';
 import { useAppStore } from '../state/useAppStore';
 import { TaskCard } from '../components/TaskCard';
+import { Task } from '../types';
 
 export const TasksScreen: React.FC = () => {
   const {
@@ -36,44 +38,50 @@ export const TasksScreen: React.FC = () => {
     { id: 'COMPLETED', label: '✓ Done' },
   ] as const;
 
-  // Filter tasks based on active filters and search
-  const filteredTasks = tasks.filter((t) => {
-    if (taskFilter === 'DAILY' && t.recurrence_type !== 'DAILY' && t.recurrence_type !== 'WEEKLY') {
-      return false;
-    }
-    if (taskFilter === 'MONTHLY' && t.recurrence_type !== 'MONTHLY') {
-      return false;
-    }
-    if (taskFilter === 'YEARLY' && t.recurrence_type !== 'YEARLY') {
-      return false;
-    }
-    if (taskFilter === 'OVERDUE' && t.status !== 'OVERDUE') {
-      return false;
-    }
-    if (taskFilter === 'COMPLETED' && t.status !== 'COMPLETED') {
-      return false;
-    }
+  // Memoized filter calculation to avoid unnecessary re-filtering on unrelated state changes
+  const filteredTasks = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
 
-    if (selectedCategoryFilter !== null && t.category_id !== selectedCategoryFilter) {
-      return false;
-    }
+    return tasks.filter((t) => {
+      if (taskFilter === 'DAILY' && t.recurrence_type !== 'DAILY' && t.recurrence_type !== 'WEEKLY') {
+        return false;
+      }
+      if (taskFilter === 'MONTHLY' && t.recurrence_type !== 'MONTHLY') {
+        return false;
+      }
+      if (taskFilter === 'YEARLY' && t.recurrence_type !== 'YEARLY') {
+        return false;
+      }
+      if (taskFilter === 'OVERDUE' && t.status !== 'OVERDUE') {
+        return false;
+      }
+      if (taskFilter === 'COMPLETED' && t.status !== 'COMPLETED') {
+        return false;
+      }
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchTitle = t.title.toLowerCase().includes(q);
-      const matchDesc = t.description ? t.description.toLowerCase().includes(q) : false;
-      if (!matchTitle && !matchDesc) return false;
-    }
+      if (selectedCategoryFilter !== null && t.category_id !== selectedCategoryFilter) {
+        return false;
+      }
 
-    return true;
-  });
+      if (q) {
+        const matchTitle = t.title.toLowerCase().includes(q);
+        const matchDesc = t.description ? t.description.toLowerCase().includes(q) : false;
+        if (!matchTitle && !matchDesc) return false;
+      }
 
-  return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: currentTheme.colors.background }]}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
+      return true;
+    });
+  }, [tasks, taskFilter, selectedCategoryFilter, searchQuery]);
+
+  const renderTaskItem = useCallback(
+    ({ item }: { item: Task }) => <TaskCard task={item} />,
+    []
+  );
+
+  const keyExtractor = useCallback((item: Task) => `task-${item.id}`, []);
+
+  const ListHeader = (
+    <View>
       {/* Search Input Bar */}
       <View
         style={[
@@ -233,38 +241,52 @@ export const TasksScreen: React.FC = () => {
           </Text>
         </TouchableOpacity>
       </View>
+    </View>
+  );
 
-      {/* Tasks List */}
-      {filteredTasks.length > 0 ? (
-        filteredTasks.map((task) => <TaskCard key={task.id} task={task} />)
-      ) : (
-        <View
-          style={[
-            styles.emptyState,
-            {
-              backgroundColor: currentTheme.colors.surface,
-              borderColor: currentTheme.colors.cardBorder,
-            },
-          ]}
-        >
-          <Text style={styles.emptyIcon}>📋</Text>
-          <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>
-            No matching tasks found
-          </Text>
-          <Text style={[styles.emptySubtitle, { color: currentTheme.colors.textSecondary }]}>
-            {searchQuery || selectedCategoryFilter !== null
-              ? 'Try adjusting your search query or filters.'
-              : 'Add your first task or reminder using the button below!'}
-          </Text>
-          <TouchableOpacity
-            style={[styles.emptyAddBtn, { backgroundColor: currentTheme.colors.primary }]}
-            onPress={() => setCreateTaskModalOpen(true)}
-          >
-            <Text style={styles.emptyAddBtnText}>+ Create Task</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </ScrollView>
+  const ListEmptyComponent = (
+    <View
+      style={[
+        styles.emptyState,
+        {
+          backgroundColor: currentTheme.colors.surface,
+          borderColor: currentTheme.colors.cardBorder,
+        },
+      ]}
+    >
+      <Text style={styles.emptyIcon}>📋</Text>
+      <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>
+        No matching tasks found
+      </Text>
+      <Text style={[styles.emptySubtitle, { color: currentTheme.colors.textSecondary }]}>
+        {searchQuery || selectedCategoryFilter !== null
+          ? 'Try adjusting your search query or filters.'
+          : 'Add your first task or reminder using the button below!'}
+      </Text>
+      <TouchableOpacity
+        style={[styles.emptyAddBtn, { backgroundColor: currentTheme.colors.primary }]}
+        onPress={() => setCreateTaskModalOpen(true)}
+      >
+        <Text style={styles.emptyAddBtnText}>+ Create Task</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <FlatList
+      data={filteredTasks}
+      keyExtractor={keyExtractor}
+      renderItem={renderTaskItem}
+      ListHeaderComponent={ListHeader}
+      ListEmptyComponent={ListEmptyComponent}
+      style={[styles.container, { backgroundColor: currentTheme.colors.background }]}
+      contentContainerStyle={styles.contentContainer}
+      initialNumToRender={8}
+      maxToRenderPerBatch={10}
+      windowSize={5}
+      removeClippedSubviews={true}
+      showsVerticalScrollIndicator={false}
+    />
   );
 };
 

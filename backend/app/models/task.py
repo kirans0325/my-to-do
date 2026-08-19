@@ -1,11 +1,16 @@
 from datetime import datetime, timezone
 from typing import Optional, List, Any
-from sqlalchemy import Integer, String, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Integer, String, Text, DateTime, ForeignKey, JSON, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 class Task(Base):
     __tablename__ = "tasks"
+    __table_args__ = (
+        Index("ix_task_status_due", "status", "due_date"),
+        Index("ix_task_rec_status", "recurrence_type", "status"),
+        Index("ix_task_cat_status", "category_id", "status"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False, index=True)

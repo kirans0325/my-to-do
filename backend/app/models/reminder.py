@@ -1,11 +1,14 @@
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy import Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Integer, String, Boolean, DateTime, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 class ReminderLog(Base):
     __tablename__ = "reminder_logs"
+    __table_args__ = (
+        Index("ix_reminder_task_ack", "task_id", "is_acknowledged"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_id: Mapped[int] = mapped_column(

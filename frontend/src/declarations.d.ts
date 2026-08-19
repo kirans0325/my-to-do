@@ -6,6 +6,7 @@ declare module 'react-native' {
   export const ScrollView: any;
   export const TextInput: any;
   export const Modal: any;
+  export const FlatList: any;
   export const ActivityIndicator: any;
   export const StatusBar: any;
   export const SafeAreaView: any;
