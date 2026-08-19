@@ -28,13 +28,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onClose }) => {
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleAdminQuickFill = () => {
-    setIsRegister(false);
-    setLoginInput('admin');
-    setPassword('Admin@123456');
-    setAuthError(null);
-  };
-
   const handleSubmit = async () => {
     setAuthError(null);
     if (isRegister) {
@@ -63,9 +56,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onClose }) => {
   };
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: currentTheme.colors.background }]}
-    >
+    <View style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -249,24 +240,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onClose }) => {
               </Text>
             )}
           </TouchableOpacity>
-
-          {/* Admin Quick Fill (For You) */}
-          <TouchableOpacity
-            style={[
-              styles.adminQuickBtn,
-              {
-                backgroundColor: currentTheme.colors.surfaceLight,
-                borderColor: `${currentTheme.colors.warning}66`,
-              },
-            ]}
-            onPress={handleAdminQuickFill}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.adminQuickEmoji}>👑</Text>
-            <Text style={[styles.adminQuickText, { color: currentTheme.colors.warning }]}>
-              Quick Fill Admin Credentials (admin / Admin@123456)
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* Guest Offline Mode Option */}
@@ -394,28 +367,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     marginTop: 8,
-    marginBottom: 14,
   },
   submitBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
-  },
-  adminQuickBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 6,
-  },
-  adminQuickEmoji: {
-    fontSize: 14,
-  },
-  adminQuickText: {
-    fontSize: 11,
     fontWeight: '700',
   },
   guestBtn: {
