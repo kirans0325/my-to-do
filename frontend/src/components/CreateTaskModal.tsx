@@ -7,10 +7,16 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { getTheme } from '../utils/theme';
 import { RecurrenceType, PriorityLevel, Subtask } from '../types';
 import { useAppStore } from '../state/useAppStore';
+import {
+  SOUND_PRESETS,
+  NotificationSoundType,
+  playNotificationSound,
+} from '../utils/soundEngine';
 
 export const CreateTaskModal: React.FC = () => {
   const { isCreateTaskModalOpen, setCreateTaskModalOpen, categories, createTask, themeMode } = useAppStore();
@@ -28,6 +34,13 @@ export const CreateTaskModal: React.FC = () => {
   const [subtaskInput, setSubtaskInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Alarm & Sound State
+  const [enableAlarm, setEnableAlarm] = useState(false);
+  const [alarmTime, setAlarmTime] = useState('09:00 AM');
+  const [selectedSound, setSelectedSound] = useState<NotificationSoundType>('bell');
+
+  const alarmTimePresets = ['08:00 AM', '12:00 PM', '05:00 PM', '09:00 PM'];
+
   const handleAddSubtask = () => {
     if (!subtaskInput.trim()) return;
     const newSt: Subtask = {
@@ -41,6 +54,11 @@ export const CreateTaskModal: React.FC = () => {
 
   const handleRemoveSubtask = (id: number) => {
     setSubtasks(subtasks.filter((s) => s.id !== id));
+  };
+
+  const handlePreviewSound = (soundId: NotificationSoundType) => {
+    setSelectedSound(soundId);
+    playNotificationSound(soundId);
   };
 
   const handleSubmit = async () => {
@@ -62,9 +80,13 @@ export const CreateTaskModal: React.FC = () => {
       }
     }
 
+    const descWithAlarm = enableAlarm
+      ? `${description ? description + '\n' : ''}⏰ Alarm: ${alarmTime} • 🎵 Sound: ${selectedSound}`
+      : description;
+
     const success = await createTask({
       title: title.trim(),
-      description: description.trim() || undefined,
+      description: descWithAlarm ? descWithAlarm.trim() : undefined,
       recurrence_type: recurrenceType,
       recurrence_interval: 1,
       priority,
@@ -76,6 +98,9 @@ export const CreateTaskModal: React.FC = () => {
     setIsSubmitting(false);
 
     if (success) {
+      if (enableAlarm) {
+        playNotificationSound(selectedSound);
+      }
       // Reset form
       setTitle('');
       setDescription('');
@@ -83,47 +108,71 @@ export const CreateTaskModal: React.FC = () => {
       setPriority('MEDIUM');
       setDueDateString('');
       setSubtasks([]);
+      setEnableAlarm(false);
       setCreateTaskModalOpen(false);
     }
   };
 
-  if (!isCreateTaskModalOpen) return null;
-
   return (
     <Modal
       visible={isCreateTaskModalOpen}
-      transparent
-      animationType="fade"
+      animationType="slide"
+      transparent={true}
       onRequestClose={() => setCreateTaskModalOpen(false)}
     >
-      <View style={styles.overlay}>
+      <View style={styles.modalOverlay}>
         <View
           style={[
-            styles.modalContent,
+            styles.modalContainer,
             {
               backgroundColor: currentTheme.colors.surface,
               borderColor: currentTheme.colors.cardBorder,
             },
           ]}
         >
-          {/* Modal Header */}
+          {/* Header */}
           <View
             style={[
-              styles.header,
+              styles.modalHeader,
               { borderBottomColor: currentTheme.colors.cardBorder },
             ]}
           >
-            <Text style={[styles.modalTitle, { color: currentTheme.colors.text }]}>
-              Create New Task / Reminder
-            </Text>
-            <TouchableOpacity onPress={() => setCreateTaskModalOpen(false)}>
-              <Text style={[styles.closeText, { color: currentTheme.colors.textMuted }]}>✕</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.headerEmoji}>📝</Text>
+              <Text
+                style={[styles.modalTitle, { color: currentTheme.colors.text }]}
+              >
+                Create New Task / Alarm
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={() => setCreateTaskModalOpen(false)}
+            >
+              <Text
+                style={[
+                  styles.closeBtnText,
+                  { color: currentTheme.colors.textMuted },
+                ]}
+              >
+                ✕
+              </Text>
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator={false}>
+          {/* Form Body */}
+          <ScrollView
+            style={styles.formScroll}
+            contentContainerStyle={styles.formContent}
+            showsVerticalScrollIndicator={false}
+          >
             {/* Title Input */}
-            <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.label,
+                { color: currentTheme.colors.textSecondary },
+              ]}
+            >
               Task Title *
             </Text>
             <TextInput
@@ -135,14 +184,19 @@ export const CreateTaskModal: React.FC = () => {
                   color: currentTheme.colors.text,
                 },
               ]}
-              placeholder="e.g. Monthly server backup & review"
+              placeholder="e.g. Server Maintenance, Daily Workout, Pay Utility Bill"
               placeholderTextColor={currentTheme.colors.textMuted}
               value={title}
               onChangeText={setTitle}
             />
 
             {/* Description Input */}
-            <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.label,
+                { color: currentTheme.colors.textSecondary },
+              ]}
+            >
               Description & Notes
             </Text>
             <TextInput
@@ -155,7 +209,7 @@ export const CreateTaskModal: React.FC = () => {
                   color: currentTheme.colors.text,
                 },
               ]}
-              placeholder="Add key details or action steps..."
+              placeholder="Add key details, links, or instructions..."
               placeholderTextColor={currentTheme.colors.textMuted}
               value={description}
               onChangeText={setDescription}
@@ -164,11 +218,18 @@ export const CreateTaskModal: React.FC = () => {
             />
 
             {/* Recurrence Frequency Selector */}
-            <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.label,
+                { color: currentTheme.colors.textSecondary },
+              ]}
+            >
               Reminder / Recurrence Frequency
             </Text>
             <View style={styles.pillRow}>
-              {(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as RecurrenceType[]).map((r) => {
+              {(
+                ['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as RecurrenceType[]
+              ).map((r) => {
                 const isSelected = recurrenceType === r;
                 return (
                   <TouchableOpacity
@@ -205,11 +266,18 @@ export const CreateTaskModal: React.FC = () => {
             </View>
 
             {/* Priority Selector */}
-            <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.label,
+                { color: currentTheme.colors.textSecondary },
+              ]}
+            >
               Priority Level
             </Text>
             <View style={styles.pillRow}>
-              {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as PriorityLevel[]).map((p) => {
+              {(
+                ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as PriorityLevel[]
+              ).map((p) => {
                 const isSelected = priority === p;
                 const pColor = currentTheme.colors.priority[p];
                 return (
@@ -246,10 +314,132 @@ export const CreateTaskModal: React.FC = () => {
               })}
             </View>
 
+            {/* Alarm & Unique Notification Sound Section */}
+            <View
+              style={[
+                styles.alarmSection,
+                {
+                  backgroundColor: currentTheme.colors.surfaceLight,
+                  borderColor: enableAlarm ? currentTheme.colors.primary : currentTheme.colors.cardBorder,
+                },
+              ]}
+            >
+              <TouchableOpacity
+                style={styles.alarmToggleRow}
+                onPress={() => setEnableAlarm(!enableAlarm)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.alarmToggleLeft}>
+                  <Text style={styles.alarmIcon}>{enableAlarm ? '🔔' : '🔕'}</Text>
+                  <View>
+                    <Text style={[styles.alarmTitle, { color: currentTheme.colors.text }]}>
+                      Audible Alarm & Sound Reminder
+                    </Text>
+                    <Text style={[styles.alarmSubtitle, { color: currentTheme.colors.textMuted }]}>
+                      Play unique audio notification chime at specified time
+                    </Text>
+                  </View>
+                </View>
+                <View
+                  style={[
+                    styles.switchPill,
+                    {
+                      backgroundColor: enableAlarm ? currentTheme.colors.primary : currentTheme.colors.cardBorder,
+                    },
+                  ]}
+                >
+                  <Text style={styles.switchPillText}>{enableAlarm ? 'ON' : 'OFF'}</Text>
+                </View>
+              </TouchableOpacity>
+
+              {enableAlarm && (
+                <View style={styles.alarmSettings}>
+                  {/* Alarm Time Presets */}
+                  <Text style={[styles.subLabel, { color: currentTheme.colors.textSecondary }]}>
+                    ⏰ Alarm Time
+                  </Text>
+                  <View style={styles.pillRow}>
+                    {alarmTimePresets.map((t) => (
+                      <TouchableOpacity
+                        key={t}
+                        style={[
+                          styles.smallPill,
+                          {
+                            backgroundColor: alarmTime === t ? currentTheme.colors.primary : currentTheme.colors.surface,
+                            borderColor: alarmTime === t ? currentTheme.colors.primary : currentTheme.colors.cardBorder,
+                          },
+                        ]}
+                        onPress={() => setAlarmTime(t)}
+                      >
+                        <Text
+                          style={[
+                            styles.smallPillText,
+                            {
+                              color: alarmTime === t ? '#FFFFFF' : currentTheme.colors.textSecondary,
+                              fontWeight: alarmTime === t ? '700' : '500',
+                            },
+                          ]}
+                        >
+                          {t}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Sound Presets with Interactive Preview */}
+                  <Text style={[styles.subLabel, { color: currentTheme.colors.textSecondary, marginTop: 8 }]}>
+                    🎵 Select Notification Chime (Tap ▶️ to preview)
+                  </Text>
+                  <View style={styles.soundList}>
+                    {SOUND_PRESETS.map((snd) => {
+                      const isSelected = selectedSound === snd.id;
+                      return (
+                        <TouchableOpacity
+                          key={snd.id}
+                          style={[
+                            styles.soundRow,
+                            {
+                              backgroundColor: isSelected ? `${currentTheme.colors.primary}20` : currentTheme.colors.surface,
+                              borderColor: isSelected ? currentTheme.colors.primary : currentTheme.colors.cardBorder,
+                            },
+                          ]}
+                          onPress={() => setSelectedSound(snd.id)}
+                        >
+                          <Text style={styles.soundEmoji}>{snd.emoji}</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.soundName, { color: currentTheme.colors.text }]}>
+                              {snd.name}
+                            </Text>
+                            <Text style={[styles.soundDesc, { color: currentTheme.colors.textMuted }]}>
+                              {snd.description}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={[
+                              styles.previewBtn,
+                              { backgroundColor: currentTheme.colors.primary },
+                            ]}
+                            onPress={() => handlePreviewSound(snd.id)}
+                          >
+                            <Text style={styles.previewBtnText}>▶️ Play</Text>
+                          </TouchableOpacity>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+            </View>
+
             {/* Category Selector */}
             {categories.length > 0 && (
               <>
-                <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.label,
+                    { color: currentTheme.colors.textSecondary },
+                  ]}
+                >
                   Category
                 </Text>
                 <View style={styles.pillRow}>
@@ -292,7 +482,12 @@ export const CreateTaskModal: React.FC = () => {
             )}
 
             {/* Due Date Input */}
-            <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.label,
+                { color: currentTheme.colors.textSecondary },
+              ]}
+            >
               Due Date / Time (Optional)
             </Text>
             <TextInput
@@ -311,7 +506,12 @@ export const CreateTaskModal: React.FC = () => {
             />
 
             {/* Subtasks Checklist Builder */}
-            <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.label,
+                { color: currentTheme.colors.textSecondary },
+              ]}
+            >
               Subtasks & Milestones
             </Text>
             <View style={styles.subtaskInputRow}>
@@ -342,26 +542,44 @@ export const CreateTaskModal: React.FC = () => {
                 ]}
                 onPress={handleAddSubtask}
               >
-                <Text style={[styles.addSubtaskText, { color: currentTheme.colors.primary }]}>
+                <Text
+                  style={[
+                    styles.addSubtaskText,
+                    { color: currentTheme.colors.primary },
+                  ]}
+                >
                   + Add
                 </Text>
               </TouchableOpacity>
             </View>
 
+            {/* Subtasks List */}
             {subtasks.map((st) => (
               <View
                 key={st.id}
                 style={[
-                  styles.subtaskItemRow,
-                  { backgroundColor: currentTheme.colors.surfaceLight },
+                  styles.subtaskItem,
+                  {
+                    backgroundColor: currentTheme.colors.surfaceLight,
+                    borderColor: currentTheme.colors.cardBorder,
+                  },
                 ]}
               >
-                <Text style={[styles.subtaskBullet, { color: currentTheme.colors.primary }]}>•</Text>
-                <Text style={[styles.subtaskTitleItem, { color: currentTheme.colors.text }]}>
-                  {st.title}
+                <Text
+                  style={[
+                    styles.subtaskTitle,
+                    { color: currentTheme.colors.text },
+                  ]}
+                >
+                  • {st.title}
                 </Text>
                 <TouchableOpacity onPress={() => handleRemoveSubtask(st.id)}>
-                  <Text style={[styles.subtaskRemoveText, { color: currentTheme.colors.textMuted }]}>
+                  <Text
+                    style={[
+                      styles.removeSubtaskText,
+                      { color: currentTheme.colors.danger },
+                    ]}
+                  >
                     ✕
                   </Text>
                 </TouchableOpacity>
@@ -369,36 +587,43 @@ export const CreateTaskModal: React.FC = () => {
             ))}
           </ScrollView>
 
-          {/* Modal Footer */}
+          {/* Footer Actions */}
           <View
             style={[
-              styles.footer,
+              styles.modalFooter,
               { borderTopColor: currentTheme.colors.cardBorder },
             ]}
           >
             <TouchableOpacity
               style={[
                 styles.cancelBtn,
-                { backgroundColor: currentTheme.colors.surfaceLight },
+                {
+                  backgroundColor: currentTheme.colors.surfaceLight,
+                  borderColor: currentTheme.colors.cardBorder,
+                },
               ]}
               onPress={() => setCreateTaskModalOpen(false)}
             >
-              <Text style={[styles.cancelBtnText, { color: currentTheme.colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.cancelBtnText,
+                  { color: currentTheme.colors.textSecondary },
+                ]}
+              >
                 Cancel
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[
-                styles.submitBtn,
+                styles.createBtn,
                 { backgroundColor: currentTheme.colors.primary },
-                isSubmitting && { opacity: 0.6 },
               ]}
               onPress={handleSubmit}
               disabled={isSubmitting}
             >
-              <Text style={styles.submitBtnText}>
-                {isSubmitting ? 'Saving...' : 'Create Task'}
+              <Text style={styles.createBtnText}>
+                {isSubmitting ? 'Creating...' : '✓ Create Task & Alarm'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -409,56 +634,73 @@ export const CreateTaskModal: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
   },
-  modalContent: {
-    borderRadius: 20,
+  modalContainer: {
     width: '100%',
     maxWidth: 540,
     maxHeight: '90%',
+    borderRadius: 18,
     borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 20,
+    elevation: 10,
   },
-  header: {
+  modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerEmoji: {
+    fontSize: 20,
+  },
   modalTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
   },
-  closeText: {
-    fontSize: 18,
+  closeBtn: {
     padding: 4,
   },
-  scrollBody: {
+  closeBtnText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  formScroll: {
+    maxHeight: 480,
+  },
+  formContent: {
     padding: 20,
   },
   label: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: 14,
     marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   input: {
     borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
     borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 14,
+    marginBottom: 14,
   },
   textArea: {
     minHeight: 70,
@@ -468,74 +710,167 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+    marginBottom: 14,
   },
   pill: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 9999,
+    borderRadius: 8,
     borderWidth: 1,
   },
   pillText: {
+    fontSize: 12,
+  },
+  alarmSection: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 14,
+  },
+  alarmToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  alarmToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  alarmIcon: {
+    fontSize: 20,
+  },
+  alarmTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  alarmSubtitle: {
     fontSize: 11,
+    marginTop: 1,
+  },
+  switchPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  switchPillText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  alarmSettings: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  subLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  smallPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  smallPillText: {
+    fontSize: 11,
+  },
+  soundList: {
+    gap: 6,
+    marginTop: 4,
+  },
+  soundRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 8,
+  },
+  soundEmoji: {
+    fontSize: 16,
+  },
+  soundName: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  soundDesc: {
+    fontSize: 10,
+  },
+  previewBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  previewBtnText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   subtaskInputRow: {
     flexDirection: 'row',
-    gap: 8,
     alignItems: 'center',
+    gap: 8,
     marginBottom: 8,
   },
   addSubtaskBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderRadius: 10,
     borderWidth: 1,
   },
   addSubtaskText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
-  subtaskItemRow: {
+  subtaskItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
-    marginBottom: 4,
-    gap: 8,
+    borderWidth: 1,
+    marginBottom: 6,
   },
-  subtaskBullet: {
-    fontSize: 14,
-  },
-  subtaskTitleItem: {
+  subtaskTitle: {
     fontSize: 13,
     flex: 1,
   },
-  subtaskRemoveText: {
-    fontSize: 12,
-    padding: 4,
+  removeSubtaskText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    paddingHorizontal: 4,
   },
-  footer: {
+  modalFooter: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'flex-end',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderTopWidth: 1,
-    gap: 12,
+    gap: 10,
   },
   cancelBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   cancelBtnText: {
     fontSize: 13,
     fontWeight: '600',
   },
-  submitBtn: {
-    paddingHorizontal: 22,
-    paddingVertical: 10,
-    borderRadius: 10,
+  createBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  submitBtnText: {
+  createBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',

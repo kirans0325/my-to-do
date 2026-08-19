@@ -13,6 +13,8 @@ import { StatCard } from '../components/StatCard';
 import { formatDateTime } from '../utils/dateUtils';
 import { taskApi } from '../api/taskApi';
 
+import { playAlertChime, playTaskCompleteSound } from '../utils/soundEngine';
+
 export const AlertsScreen: React.FC = () => {
   const {
     tasks,
@@ -31,9 +33,14 @@ export const AlertsScreen: React.FC = () => {
     try {
       await taskApi.scanAlerts();
       await fetchAllData();
+      playAlertChime();
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const handleTestSound = () => {
+    playAlertChime();
   };
 
   return (
@@ -81,6 +88,21 @@ export const AlertsScreen: React.FC = () => {
         >
           <Text style={[styles.scanBtnText, { color: currentTheme.colors.text }]}>
             🔄 Scan For Alerts Now
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.scanBtn,
+            {
+              backgroundColor: currentTheme.colors.surface,
+              borderColor: currentTheme.colors.cardBorder,
+            },
+          ]}
+          onPress={handleTestSound}
+        >
+          <Text style={[styles.scanBtnText, { color: currentTheme.colors.primary }]}>
+            🎵 Test Alarm Chime
           </Text>
         </TouchableOpacity>
 

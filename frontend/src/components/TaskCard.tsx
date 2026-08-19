@@ -4,6 +4,7 @@ import { Task } from '../types';
 import { getTheme } from '../utils/theme';
 import { getRelativeDueLabel } from '../utils/dateUtils';
 import { useAppStore } from '../state/useAppStore';
+import { playTaskCompleteSound } from '../utils/soundEngine';
 
 interface TaskCardProps {
   task: Task;
@@ -32,8 +33,18 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       ? '🔵'
       : '';
 
+  const handleToggleComplete = () => {
+    if (!isDone) {
+      playTaskCompleteSound();
+    }
+    toggleTaskComplete(task.id);
+  };
+
   const handleProgressChange = (delta: number) => {
     const newProgress = Math.max(0, Math.min(100, task.progress_percentage + delta));
+    if (newProgress >= 100 && !isDone) {
+      playTaskCompleteSound();
+    }
     updateTaskProgress(task.id, newProgress);
   };
 
@@ -105,7 +116,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       <View style={styles.body}>
         <TouchableOpacity
           style={styles.titleRow}
-          onPress={() => toggleTaskComplete(task.id)}
+          onPress={handleToggleComplete}
           activeOpacity={0.7}
         >
           <View
@@ -267,7 +278,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                 }
               : { backgroundColor: currentTheme.colors.success },
           ]}
-          onPress={() => toggleTaskComplete(task.id)}
+          onPress={handleToggleComplete}
         >
           <Text
             style={[
