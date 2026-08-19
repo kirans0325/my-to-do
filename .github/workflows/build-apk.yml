@@ -10,10 +10,6 @@ jobs:
     name: 📱 Build Android APK
     runs-on: ubuntu-latest
 
-    env:
-      _JAVA_OPTIONS: "-Xmx4096m"
-      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.vfs.watch=false"
-
     steps:
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@v4
@@ -23,6 +19,9 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      - name: 🤖 Set up Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: 🟢 Set up Node.js 20
         uses: actions/setup-node@v4
@@ -38,10 +37,17 @@ jobs:
       - name: 📱 Generate Native Android Project
         working-directory: frontend
         run: |
-          npx expo prebuild --platform android --clean
-          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError" >> android/gradle.properties
-          echo "android.useAndroidX=true" >> android/gradle.properties
-          echo "android.enableJetifier=false" >> android/gradle.properties
+          npx expo prebuild --platform android --clean --no-install
+          # Ensure Gradle has 4GB heap space
+          if grep -q "org.gradle.jvmargs" android/gradle.properties; then
+            sed -i 's/org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError/g' android/gradle.properties
+          else
+            echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError" >> android/gradle.properties
+          fi
+          chmod +x android/gradlew
+
+      - name: 🐘 Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: 🏗️ Build Installable Android APK
         working-directory: frontend/android
