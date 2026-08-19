@@ -88,8 +88,14 @@ export default function App() {
                 { color: currentTheme.colors.danger },
               ]}
             >
-              ⚠️ Backend connection notice: Make sure your FastAPI backend is running on port 8000. ({error})
+              📡 Backend Offline: Start FastAPI on your laptop (port 8000).
             </Text>
+            <TouchableOpacity
+              style={[styles.retryBtn, { backgroundColor: currentTheme.colors.danger }]}
+              onPress={fetchAllData}
+            >
+              <Text style={styles.retryBtnText}>🔄 Retry</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -147,13 +153,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   errorBanner: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   errorText: {
     fontSize: 12,
-    textAlign: 'center',
     fontWeight: '600',
+    flex: 1,
+  },
+  retryBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

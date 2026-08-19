@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: 📱 Build Android APK
+    name: 📱 Build Standalone Android APK
     runs-on: ubuntu-latest
 
     steps:
@@ -38,28 +38,30 @@ jobs:
         working-directory: frontend
         run: |
           npx expo prebuild --platform android --clean --no-install
-          # Ensure Gradle has 4GB heap space
+          # 1. Allocate 4GB heap space to Gradle
           if grep -q "org.gradle.jvmargs" android/gradle.properties; then
             sed -i 's/org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError/g' android/gradle.properties
           else
             echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError" >> android/gradle.properties
           fi
+          # 2. Configure Release build to use debug signing config so JS is bundled offline and APK is directly installable
+          sed -i 's/signingConfig signingConfigs.release/signingConfig signingConfigs.debug/g' android/app/build.gradle || true
           chmod +x android/gradlew
 
       - name: 🐘 Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: 🏗️ Build Installable Android APK
+      - name: 🏗️ Build Standalone Release APK (Bundled Offline JS)
         working-directory: frontend/android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: 🔍 List Generated APK Files
         working-directory: frontend/android
-        run: ls -la app/build/outputs/apk/debug/
+        run: ls -la app/build/outputs/apk/release/
 
-      - name: 📤 Upload APK Artifact
+      - name: 📤 Upload Standalone APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: TaskFlow-Pro-Android-APK
-          path: frontend/android/app/build/outputs/apk/debug/*.apk
+          path: frontend/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
