@@ -92,35 +92,6 @@ export default function App() {
           </View>
         )}
 
-        {/* Notice Banner if offline */}
-        {error && (
-          <View
-            style={[
-              styles.errorBanner,
-              {
-                backgroundColor: currentTheme.colors.surfaceLight,
-                borderBottomColor: currentTheme.colors.cardBorder,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.errorText,
-                { color: currentTheme.colors.textSecondary },
-              ]}
-              numberOfLines={1}
-            >
-              📱 Local Mode • Backend: 10.130.151.61:8000
-            </Text>
-            <TouchableOpacity
-              style={[styles.retryBtn, { backgroundColor: currentTheme.colors.primary }]}
-              onPress={fetchAllData}
-            >
-              <Text style={styles.retryBtnText}>🔄 Connect</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* Main Content Area - Always Rendered */}
         <View style={styles.mainContent}>
           {renderActiveScreen()}
@@ -162,30 +133,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   syncingText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  errorBanner: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  errorText: {
-    fontSize: 11,
-    fontWeight: '600',
-    flex: 1,
-  },
-  retryBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  retryBtnText: {
-    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
   },

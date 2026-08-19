@@ -237,9 +237,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         error: null
       });
     } catch (err: any) {
-      console.warn('Backend connection offline, running in local mode:', err.message);
+      console.warn('Running in offline / local mode:', err.message);
       set({
-        error: 'Backend offline: Running in offline local mode (Hotspot IP: 10.130.151.61:8000)',
+        error: null,
         isLoading: false
       });
     }
