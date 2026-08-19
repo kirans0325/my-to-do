@@ -1,14 +1,20 @@
 from datetime import datetime, date, timezone
 from typing import Optional, Any
-from sqlalchemy import Integer, String, Text, Date, DateTime, JSON
+from sqlalchemy import Integer, String, Text, Date, DateTime, JSON, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
 class DiaryEntry(Base):
     __tablename__ = "diary_entries"
+    __table_args__ = (
+        UniqueConstraint("user_id", "entry_date", name="uq_user_entry_date"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    entry_date: Mapped[date] = mapped_column(Date, nullable=False, unique=True, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    entry_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     title: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     

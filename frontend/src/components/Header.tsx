@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { getTheme } from '../utils/theme';
 import { useAppStore } from '../state/useAppStore';
 
@@ -11,11 +11,15 @@ export const Header: React.FC = () => {
     toggleTheme,
     setActiveTab,
     setCreateTaskModalOpen,
+    currentUser,
+    logout,
+    setAuthModalOpen,
   } = useAppStore();
 
   const currentTheme = getTheme(themeMode);
   const unackCount = reminders.length;
   const streak = stats?.current_streak_days || 1;
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Format today's date TickTick-style
   const now = new Date();
@@ -57,6 +61,44 @@ export const Header: React.FC = () => {
 
       {/* Quick Action Badges */}
       <View style={styles.actionsRow}>
+        {/* User Profile / Sign In Pill */}
+        {currentUser ? (
+          <TouchableOpacity
+            style={[
+              styles.userPill,
+              {
+                backgroundColor: currentTheme.colors.surfaceLight,
+                borderColor: currentUser.role === 'ADMIN' ? `${currentTheme.colors.warning}66` : currentTheme.colors.cardBorder,
+              },
+            ]}
+            onPress={() => setShowUserMenu(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.userAvatar}>
+              {currentUser.role === 'ADMIN' ? '👑' : '👤'}
+            </Text>
+            <Text style={[styles.userName, { color: currentTheme.colors.text }]}>
+              {currentUser.username}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.signInPill,
+              {
+                backgroundColor: currentTheme.colors.primaryLight,
+                borderColor: currentTheme.colors.primary,
+              },
+            ]}
+            onPress={() => setAuthModalOpen(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.signInText, { color: currentTheme.colors.primary }]}>
+              👤 Sign In
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Streak Pill */}
         <View
           style={[
@@ -121,6 +163,54 @@ export const Header: React.FC = () => {
           <Text style={styles.createButtonText}>+ Add</Text>
         </TouchableOpacity>
       </View>
+
+      {/* User Dropdown / Logout Modal */}
+      {showUserMenu && currentUser && (
+        <Modal transparent animationType="fade" visible={showUserMenu} onRequestClose={() => setShowUserMenu(false)}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowUserMenu(false)}>
+            <View
+              style={[
+                styles.userMenuCard,
+                {
+                  backgroundColor: currentTheme.colors.surface,
+                  borderColor: currentTheme.colors.cardBorder,
+                },
+              ]}
+            >
+              <View style={styles.menuHeader}>
+                <Text style={styles.menuAvatar}>{currentUser.role === 'ADMIN' ? '👑' : '👤'}</Text>
+                <View>
+                  <Text style={[styles.menuName, { color: currentTheme.colors.text }]}>
+                    {currentUser.full_name || currentUser.username}
+                  </Text>
+                  <Text style={[styles.menuEmail, { color: currentTheme.colors.textMuted }]}>
+                    {currentUser.email}
+                  </Text>
+                  {currentUser.role === 'ADMIN' && (
+                    <View style={[styles.adminBadgePill, { backgroundColor: currentTheme.colors.warningLight }]}>
+                      <Text style={[styles.adminBadgeText, { color: currentTheme.colors.warning }]}>
+                        👑 Administrator
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.logoutBtn, { backgroundColor: currentTheme.colors.dangerLight }]}
+                onPress={() => {
+                  setShowUserMenu(false);
+                  logout();
+                }}
+              >
+                <Text style={[styles.logoutBtnText, { color: currentTheme.colors.danger }]}>
+                  🚪 Sign Out
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </View>
   );
 };
@@ -167,10 +257,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  userPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 9999,
+    borderWidth: 1,
+    gap: 4,
+  },
+  userAvatar: {
+    fontSize: 12,
+  },
+  userName: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  signInPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 9999,
+    borderWidth: 1,
+  },
+  signInText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 9999,
     borderWidth: 1,
@@ -212,12 +328,68 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   createButton: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 10,
   },
   createButtonText: {
     color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  userMenuCard: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  menuAvatar: {
+    fontSize: 28,
+  },
+  menuName: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  menuEmail: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  adminBadgePill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  adminBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  logoutBtn: {
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  logoutBtnText: {
     fontSize: 13,
     fontWeight: '700',
   },

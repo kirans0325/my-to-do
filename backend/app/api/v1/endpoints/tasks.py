@@ -7,6 +7,8 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models.task import Task
 from app.models.progress import ProgressEntry
+from app.models.user import User
+from app.core.security import get_current_user_optional
 from app.schemas.task_schema import (
     TaskCreate,
     TaskUpdate,
@@ -24,6 +26,7 @@ async def list_tasks(
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
     priority: Optional[str] = Query(None, description="Filter by priority: LOW, MEDIUM, HIGH, URGENT"),
     search: Optional[str] = Query(None, description="Search in title or description"),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     query = select(Task).options(
@@ -32,6 +35,11 @@ async def list_tasks(
     )
     
     conditions = []
+
+    # Multi-user isolation
+    if current_user:
+        conditions.append(or_(Task.user_id == current_user.id, Task.user_id == None))
+    
     if recurrence_type:
         conditions.append(Task.recurrence_type == recurrence_type.upper())
     if status_filter:
@@ -60,6 +68,7 @@ async def list_tasks(
 @router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(
     task_in: TaskCreate,
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     data = task_in.model_dump()
@@ -68,6 +77,9 @@ async def create_task(
         data["subtasks"] = [st if isinstance(st, dict) else st.model_dump() for st in data["subtasks"]]
     
     task = Task(**data)
+    if current_user:
+        task.user_id = current_user.id
+
     db.add(task)
     await db.commit()
     
@@ -138,30 +150,24 @@ async def update_task_progress(
     if progress_in.progress_value >= 100:
         task.status = "COMPLETED"
         task.completed_at = datetime.now(timezone.utc)
-    elif progress_in.progress_value > 0 and task.status in ["PENDING", "OVERDUE"]:
+    elif progress_in.progress_value > 0 and task.status == "PENDING":
         task.status = "IN_PROGRESS"
 
-    # Add Progress Entry Log
-    entry = ProgressEntry(
+    # Log progress history entry
+    log_entry = ProgressEntry(
         task_id=task.id,
         progress_value=progress_in.progress_value,
-        note=progress_in.note,
-        recorded_at=datetime.now(timezone.utc)
+        note=progress_in.note
     )
-    db.add(entry)
+    db.add(log_entry)
+
     task.updated_at = datetime.now(timezone.utc)
-    
     await db.commit()
-    
-    # Reload task with newly logged progress entries
-    stmt = select(Task).options(
-        selectinload(Task.category),
-        selectinload(Task.progress_entries)
-    ).where(Task.id == task_id)
-    return (await db.execute(stmt)).scalar_one()
+    await db.refresh(task)
+    return task
 
 @router.post("/{task_id}/complete", response_model=TaskResponse)
-async def mark_task_complete(
+async def complete_task(
     task_id: int,
     db: AsyncSession = Depends(get_db)
 ):
@@ -173,30 +179,26 @@ async def mark_task_complete(
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
 
-    # Record 100% progress log
-    entry = ProgressEntry(
-        task_id=task.id,
-        progress_value=100,
-        note="Marked as completed",
-        recorded_at=datetime.now(timezone.utc)
-    )
-    db.add(entry)
-
-    # Handle recurrence advancement if applicable
-    was_advanced = advance_recurring_task(task)
-    if not was_advanced:
+    # If it is a recurring task, calculate and advance next cycle
+    if task.recurrence_type != "NONE":
+        task = advance_recurring_task(task)
+    else:
         task.status = "COMPLETED"
         task.progress_percentage = 100
         task.completed_at = datetime.now(timezone.utc)
 
+    # Log completion progress
+    log_entry = ProgressEntry(
+        task_id=task.id,
+        progress_value=100,
+        note="Task marked completed (Cycle advanced if recurring)"
+    )
+    db.add(log_entry)
+
     task.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    
-    stmt = select(Task).options(
-        selectinload(Task.category),
-        selectinload(Task.progress_entries)
-    ).where(Task.id == task_id)
-    return (await db.execute(stmt)).scalar_one()
+    await db.refresh(task)
+    return task
 
 @router.post("/{task_id}/toggle-subtask/{subtask_id}", response_model=TaskResponse)
 async def toggle_subtask(
@@ -220,22 +222,25 @@ async def toggle_subtask(
             updated = True
             break
 
-    if updated:
-        task.subtasks = list(subtasks)
-        # Recalculate progress percentage based on subtask ratio
-        total_st = len(subtasks)
-        completed_st = sum(1 for s in subtasks if s.get("completed"))
-        if total_st > 0:
-            task.progress_percentage = int((completed_st / total_st) * 100)
-            if task.progress_percentage == 100 and task.recurrence_type == "NONE":
-                task.status = "COMPLETED"
-                task.completed_at = datetime.now(timezone.utc)
-            elif task.progress_percentage > 0:
-                task.status = "IN_PROGRESS"
-                
-        task.updated_at = datetime.now(timezone.utc)
-        await db.commit()
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Subtask with id {subtask_id} not found.")
 
+    task.subtasks = list(subtasks)
+    
+    # Auto recalculate progress based on subtasks
+    completed_count = sum(1 for st in subtasks if st.get("completed"))
+    total_count = len(subtasks)
+    if total_count > 0:
+        task.progress_percentage = int((completed_count / total_count) * 100)
+        if task.progress_percentage >= 100:
+            task.status = "COMPLETED"
+            task.completed_at = datetime.now(timezone.utc)
+        elif task.progress_percentage > 0 and task.status == "PENDING":
+            task.status = "IN_PROGRESS"
+
+    task.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(task)
     return task
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -243,9 +248,11 @@ async def delete_task(
     task_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    task = await db.get(Task, task_id)
+    stmt = select(Task).where(Task.id == task_id)
+    task = (await db.execute(stmt)).scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
+
     await db.delete(task)
     await db.commit()
     return None

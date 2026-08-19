@@ -1,12 +1,41 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 
-// 💡 TIP: When installing the APK on your physical Android phone:
-// If running FastAPI on your computer, set your computer's Wi-Fi IP address below (e.g. 'http://192.168.1.15:8000/api/v1')
-// If backend is deployed to cloud (Render, Railway, Fly.io), set your cloud URL.
 // Cloud Production Backend URL on Vercel
 const VERCEL_CLOUD_URL = 'https://mytask-flow.vercel.app/api/v1';
 const CUSTOM_BACKEND_URL: string | null = null;
+
+let currentAuthToken: string | null = null;
+
+export const setAuthToken = (token: string | null) => {
+  currentAuthToken = token;
+  if (token) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('taskflow_auth_token', token);
+      } catch (e) {}
+    }
+  } else {
+    delete apiClient.defaults.headers.common['Authorization'];
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.removeItem('taskflow_auth_token');
+        localStorage.removeItem('taskflow_user_data');
+      } catch (e) {}
+    }
+  }
+};
+
+export const getStoredAuthToken = (): string | null => {
+  if (currentAuthToken) return currentAuthToken;
+  if (typeof localStorage !== 'undefined') {
+    try {
+      return localStorage.getItem('taskflow_auth_token');
+    } catch (e) {}
+  }
+  return null;
+};
 
 const getBaseUrl = (): string => {
   if (CUSTOM_BACKEND_URL) {
@@ -38,6 +67,20 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 10000,
+});
+
+// Initialize from stored token if exists
+const initialToken = getStoredAuthToken();
+if (initialToken) {
+  apiClient.defaults.headers.common['Authorization'] = `Bearer ${initialToken}`;
+}
+
+apiClient.interceptors.request.use((config) => {
+  const token = getStoredAuthToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 apiClient.interceptors.response.use(

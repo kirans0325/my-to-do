@@ -9,10 +9,15 @@ import {
   TaskCreateInput,
   DiaryCreateInput,
   PriorityLevel,
+  User,
+  LoginInput,
+  RegisterInput,
 } from '../types';
 import { taskApi } from '../api/taskApi';
 import { diaryApi } from '../api/diaryApi';
 import { statsApi } from '../api/statsApi';
+import { authApi } from '../api/authApi';
+import { setAuthToken, getStoredAuthToken } from '../api/client';
 import { getTodayDateString } from '../utils/dateUtils';
 import { ThemeMode, getTheme } from '../utils/theme';
 
@@ -126,6 +131,19 @@ interface AppState {
   toggleTheme: () => void;
   setThemeMode: (mode: ThemeMode) => void;
 
+  // Auth State
+  currentUser: User | null;
+  authToken: string | null;
+  isAuthModalOpen: boolean;
+  authLoading: boolean;
+  authError: string | null;
+  setAuthModalOpen: (open: boolean) => void;
+  setAuthError: (error: string | null) => void;
+  login: (input: LoginInput) => Promise<boolean>;
+  register: (input: RegisterInput) => Promise<boolean>;
+  logout: () => void;
+  initAuth: () => Promise<void>;
+
   // Navigation & UI State
   activeTab: 'dashboard' | 'tasks' | 'diary' | 'alerts' | 'analytics';
   taskFilter: 'ALL' | 'DAILY' | 'MONTHLY' | 'YEARLY' | 'OVERDUE' | 'COMPLETED';
@@ -180,6 +198,82 @@ export const useAppStore = create<AppState>((set, get) => ({
   themeMode: 'dark',
   toggleTheme: () => set((state) => ({ themeMode: state.themeMode === 'dark' ? 'light' : 'dark' })),
   setThemeMode: (mode) => set({ themeMode: mode }),
+
+  // Auth Defaults
+  currentUser: null,
+  authToken: null,
+  isAuthModalOpen: false,
+  authLoading: false,
+  authError: null,
+
+  setAuthModalOpen: (open) => set({ isAuthModalOpen: open, authError: null }),
+  setAuthError: (error) => set({ authError: error }),
+
+  initAuth: async () => {
+    const token = getStoredAuthToken();
+    if (token) {
+      set({ authToken: token });
+      try {
+        const user = await authApi.getMe();
+        set({ currentUser: user });
+      } catch (e) {
+        console.warn('Stored auth token expired or invalid');
+        setAuthToken(null);
+        set({ currentUser: null, authToken: null });
+      }
+    }
+  },
+
+  login: async (input: LoginInput) => {
+    set({ authLoading: true, authError: null });
+    try {
+      const res = await authApi.login(input);
+      set({
+        currentUser: res.user,
+        authToken: res.access_token,
+        authLoading: false,
+        authError: null,
+        isAuthModalOpen: false,
+      });
+      get().fetchAllData();
+      return true;
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Invalid username or password.';
+      set({ authError: msg, authLoading: false });
+      return false;
+    }
+  },
+
+  register: async (input: RegisterInput) => {
+    set({ authLoading: true, authError: null });
+    try {
+      const res = await authApi.register(input);
+      set({
+        currentUser: res.user,
+        authToken: res.access_token,
+        authLoading: false,
+        authError: null,
+        isAuthModalOpen: false,
+      });
+      get().fetchAllData();
+      return true;
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Registration failed. Username or email may already be in use.';
+      set({ authError: msg, authLoading: false });
+      return false;
+    }
+  },
+
+  logout: () => {
+    setAuthToken(null);
+    set({
+      currentUser: null,
+      authToken: null,
+      tasks: defaultTasks,
+      diaryEntries: [],
+      stats: defaultStats,
+    });
+  },
 
   activeTab: 'dashboard',
   taskFilter: 'ALL',

@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   StatusBar,
-  TouchableOpacity,
+  Modal,
   Platform,
 } from 'react-native';
 import { getTheme } from './src/utils/theme';
@@ -15,6 +15,7 @@ import { Header } from './src/components/Header';
 import { Navigation } from './src/components/Navigation';
 import { CreateTaskModal } from './src/components/CreateTaskModal';
 import { CreateDiaryModal } from './src/components/CreateDiaryModal';
+import { AuthScreen } from './src/screens/AuthScreen';
 
 import { DashboardScreen } from './src/screens/DashboardScreen';
 import { TasksScreen } from './src/screens/TasksScreen';
@@ -23,11 +24,22 @@ import { AlertsScreen } from './src/screens/AlertsScreen';
 import { AnalyticsScreen } from './src/screens/AnalyticsScreen';
 
 export default function App() {
-  const { activeTab, isLoading, error, themeMode, fetchAllData } = useAppStore();
+  const {
+    activeTab,
+    isLoading,
+    themeMode,
+    fetchAllData,
+    initAuth,
+    isAuthModalOpen,
+    setAuthModalOpen,
+  } = useAppStore();
+
   const currentTheme = getTheme(themeMode);
 
   useEffect(() => {
-    fetchAllData();
+    initAuth().then(() => {
+      fetchAllData();
+    });
     // Auto refresh data every 30 seconds
     const interval = setInterval(() => {
       fetchAllData();
@@ -103,6 +115,17 @@ export default function App() {
         {/* Global Modals */}
         <CreateTaskModal />
         <CreateDiaryModal />
+
+        {/* Auth Modal (Sign In / Register) */}
+        {isAuthModalOpen && (
+          <Modal
+            visible={isAuthModalOpen}
+            animationType="slide"
+            onRequestClose={() => setAuthModalOpen(false)}
+          >
+            <AuthScreen onClose={() => setAuthModalOpen(false)} />
+          </Modal>
+        )}
       </View>
     </SafeAreaView>
   );

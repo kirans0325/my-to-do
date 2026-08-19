@@ -58,7 +58,30 @@ async def init_db():
     """Create all database tables asynchronously on startup."""
     # Import all models so metadata knows them
     import app.models  # noqa
+    from sqlalchemy import text
+
+    logger.info(f"Initializing database schema on: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL}")
     async with engine.begin() as conn:
-        logger.info(f"Initializing database schema on: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL}")
         await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database schema initialized successfully.")
+        
+        # Safe PostgreSQL / SQLite column migrations for multi-user user_id
+        try:
+            if settings.is_postgres:
+                await conn.execute(text("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;"))
+                await conn.execute(text("ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_user_id ON tasks(user_id);"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_diary_user_id ON diary_entries(user_id);"))
+            elif settings.is_sqlite:
+                # SQLite fallback
+                try:
+                    await conn.execute(text("ALTER TABLE tasks ADD COLUMN user_id INTEGER;"))
+                except Exception:
+                    pass
+                try:
+                    await conn.execute(text("ALTER TABLE diary_entries ADD COLUMN user_id INTEGER;"))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning(f"Column migration warning (safe to ignore if columns exist): {e}")
+
+    logger.info("Database schema initialized successfully.")

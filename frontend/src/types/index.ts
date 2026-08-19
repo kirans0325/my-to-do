@@ -140,3 +140,43 @@ export interface OverviewStats {
   total_diary_entries: number;
   average_productivity: number;
 }
+
+export type UserRole = 'USER' | 'ADMIN';
+
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  full_name?: string;
+  role: UserRole;
+  created_at?: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+export interface LoginInput {
+  login: string;
+  password: string;
+}
+
+export interface RegisterInput {
+  username: string;
+  email: string;
+  password: string;
+  full_name?: string;
+}
+
+export interface FamilyUserSummary {
+  id: number;
+  username: string;
+  email: string;
+  full_name?: string;
+  role: UserRole;
+  total_tasks: number;
+  total_diary_entries: number;
+  created_at?: string;
+}

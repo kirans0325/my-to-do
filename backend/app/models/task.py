@@ -36,6 +36,9 @@ class Task(Base):
     progress_percentage: Mapped[int] = mapped_column(Integer, default=0)
     
     # Foreign Keys
+    user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     category_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
     )
