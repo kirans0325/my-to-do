@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { getTheme } from '../utils/theme';
 import { useAppStore } from '../state/useAppStore';
+import { AdminConsoleModal } from '../screens/AdminConsoleModal';
 
 export const Header: React.FC = () => {
   const {
@@ -20,6 +21,7 @@ export const Header: React.FC = () => {
   const unackCount = reminders.length;
   const streak = stats?.current_streak_days || 1;
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showAdminConsole, setShowAdminConsole] = useState(false);
 
   // Format today's date TickTick-style
   const now = new Date();
@@ -61,6 +63,26 @@ export const Header: React.FC = () => {
 
       {/* Quick Action Badges */}
       <View style={styles.actionsRow}>
+        {/* Admin Console Direct Button (If Admin) */}
+        {currentUser?.role === 'ADMIN' && (
+          <TouchableOpacity
+            style={[
+              styles.adminPill,
+              {
+                backgroundColor: currentTheme.colors.warningLight,
+                borderColor: currentTheme.colors.warning,
+              },
+            ]}
+            onPress={() => setShowAdminConsole(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.adminPillEmoji}>👑</Text>
+            <Text style={[styles.adminPillText, { color: currentTheme.colors.warning }]}>
+              Admin Console
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* User Profile / Sign In Pill */}
         {currentUser ? (
           <TouchableOpacity
@@ -179,7 +201,7 @@ export const Header: React.FC = () => {
             >
               <View style={styles.menuHeader}>
                 <Text style={styles.menuAvatar}>{currentUser.role === 'ADMIN' ? '👑' : '👤'}</Text>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={[styles.menuName, { color: currentTheme.colors.text }]}>
                     {currentUser.full_name || currentUser.username}
                   </Text>
@@ -196,6 +218,20 @@ export const Header: React.FC = () => {
                 </View>
               </View>
 
+              {currentUser.role === 'ADMIN' && (
+                <TouchableOpacity
+                  style={[styles.adminMenuBtn, { backgroundColor: currentTheme.colors.surfaceLight, borderColor: currentTheme.colors.warning }]}
+                  onPress={() => {
+                    setShowUserMenu(false);
+                    setShowAdminConsole(true);
+                  }}
+                >
+                  <Text style={[styles.adminMenuBtnText, { color: currentTheme.colors.warning }]}>
+                    👑 Open Admin Console
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
                 style={[styles.logoutBtn, { backgroundColor: currentTheme.colors.dangerLight }]}
                 onPress={() => {
@@ -210,6 +246,11 @@ export const Header: React.FC = () => {
             </View>
           </TouchableOpacity>
         </Modal>
+      )}
+
+      {/* Admin Console Modal */}
+      {showAdminConsole && (
+        <AdminConsoleModal visible={showAdminConsole} onClose={() => setShowAdminConsole(false)} />
       )}
     </View>
   );
@@ -256,6 +297,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexWrap: 'wrap',
+  },
+  adminPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 9999,
+    borderWidth: 1,
+    gap: 4,
+  },
+  adminPillEmoji: {
+    fontSize: 12,
+  },
+  adminPillText: {
+    fontSize: 11,
+    fontWeight: '800',
   },
   userPill: {
     flexDirection: 'row',
@@ -382,6 +440,17 @@ const styles = StyleSheet.create({
   },
   adminBadgeText: {
     fontSize: 10,
+    fontWeight: '800',
+  },
+  adminMenuBtn: {
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  adminMenuBtnText: {
+    fontSize: 12,
     fontWeight: '800',
   },
   logoutBtn: {

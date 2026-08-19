@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional
 from sqlalchemy import Integer, String, Boolean, DateTime
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
 class User(Base):
@@ -17,6 +17,10 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20), default="USER", index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
+    # Login & Activity Tracking
+    login_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -34,5 +38,7 @@ class User(Base):
             "full_name": self.full_name,
             "role": self.role,
             "is_active": self.is_active,
+            "login_count": self.login_count,
+            "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

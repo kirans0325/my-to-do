@@ -149,6 +149,8 @@ export interface User {
   email: string;
   full_name?: string;
   role: UserRole;
+  login_count?: number;
+  last_login_at?: string;
   created_at?: string;
 }
 
@@ -176,7 +178,21 @@ export interface FamilyUserSummary {
   email: string;
   full_name?: string;
   role: UserRole;
+  is_active?: boolean;
+  login_count: number;
+  last_login_at?: string;
   total_tasks: number;
+  completed_tasks: number;
   total_diary_entries: number;
   created_at?: string;
+}
+
+export interface AdminAnalyticsSummary {
+  total_users: number;
+  total_app_logins: number;
+  active_recently_count: number;
+  total_tasks_created: number;
+  total_tasks_completed: number;
+  total_diary_entries: number;
+  users: FamilyUserSummary[];
 }

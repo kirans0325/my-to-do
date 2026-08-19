@@ -69,6 +69,8 @@ async def init_db():
             if settings.is_postgres:
                 await conn.execute(text("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;"))
                 await conn.execute(text("ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;"))
+                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0;"))
+                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;"))
                 await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_user_id ON tasks(user_id);"))
                 await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_diary_user_id ON diary_entries(user_id);"))
             elif settings.is_sqlite:
@@ -79,6 +81,14 @@ async def init_db():
                     pass
                 try:
                     await conn.execute(text("ALTER TABLE diary_entries ADD COLUMN user_id INTEGER;"))
+                except Exception:
+                    pass
+                try:
+                    await conn.execute(text("ALTER TABLE users ADD COLUMN login_count INTEGER DEFAULT 0;"))
+                except Exception:
+                    pass
+                try:
+                    await conn.execute(text("ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP;"))
                 except Exception:
                     pass
         except Exception as e:
