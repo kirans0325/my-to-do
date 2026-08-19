@@ -8,6 +8,7 @@ import {
   OverviewStats,
   TaskCreateInput,
   DiaryCreateInput,
+  PriorityLevel,
 } from '../types';
 import { taskApi } from '../api/taskApi';
 import { diaryApi } from '../api/diaryApi';
@@ -130,6 +131,7 @@ interface AppState {
   taskFilter: 'ALL' | 'DAILY' | 'MONTHLY' | 'YEARLY' | 'OVERDUE' | 'COMPLETED';
   searchQuery: string;
   selectedCategoryFilter: number | null;
+  selectedPriorityFilter: PriorityLevel | 'ALL' | null;
   isCreateTaskModalOpen: boolean;
   isCreateDiaryModalOpen: boolean;
   selectedDiaryDate: string;
@@ -149,6 +151,7 @@ interface AppState {
   setTaskFilter: (filter: 'ALL' | 'DAILY' | 'MONTHLY' | 'YEARLY' | 'OVERDUE' | 'COMPLETED') => void;
   setSearchQuery: (query: string) => void;
   setSelectedCategoryFilter: (catId: number | null) => void;
+  setSelectedPriorityFilter: (priority: PriorityLevel | 'ALL' | null) => void;
   setCreateTaskModalOpen: (open: boolean) => void;
   setCreateDiaryModalOpen: (open: boolean) => void;
   setSelectedDiaryDate: (dateStr: string) => void;
@@ -182,6 +185,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   taskFilter: 'ALL',
   searchQuery: '',
   selectedCategoryFilter: null,
+  selectedPriorityFilter: null,
   isCreateTaskModalOpen: false,
   isCreateDiaryModalOpen: false,
   selectedDiaryDate: getTodayDateString(),
@@ -199,6 +203,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTaskFilter: (filter) => set({ taskFilter: filter }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSelectedCategoryFilter: (catId) => set({ selectedCategoryFilter: catId }),
+  setSelectedPriorityFilter: (priority) => set({ selectedPriorityFilter: priority }),
   setCreateTaskModalOpen: (open) => set({ isCreateTaskModalOpen: open }),
   setCreateDiaryModalOpen: (open) => set({ isCreateDiaryModalOpen: open }),
   setSelectedDiaryDate: (dateStr) => set({ selectedDiaryDate: dateStr }),

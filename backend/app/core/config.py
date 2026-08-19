@@ -11,7 +11,7 @@ class Settings(BaseSettings):
         case_sensitive=False
     )
 
-    APP_NAME: str = "TaskFlow Pro API"
+    APP_NAME: str = "Task Flow API"
     DEBUG: bool = True
     API_V1_PREFIX: str = "/api/v1"
     

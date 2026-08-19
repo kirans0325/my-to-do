@@ -1,4 +1,4 @@
-# TickFlow Pro 🚀
+# Task Flow 🚀
 
 > **TickTick-Inspired Cross-Platform Task, Habit Tracker, Reminder, Progress Monitor & Daily Activity Journal System**  
 > Runs simultaneously on **Android Mobile** and **Web Browsers** (React Native / Expo) powered by a **FastAPI** backend with cloud **Neon PostgreSQL** database.  

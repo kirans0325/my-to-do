@@ -48,7 +48,7 @@ export const Header: React.FC = () => {
           <Text style={styles.logoText}>✓</Text>
         </View>
         <View>
-          <Text style={[styles.title, { color: currentTheme.colors.text }]}>TickFlow</Text>
+          <Text style={[styles.title, { color: currentTheme.colors.text }]}>Task Flow</Text>
           <Text style={[styles.subtitle, { color: currentTheme.colors.textMuted }]}>
             {dateFormatted} • ☁️ Neon DB
           </Text>
