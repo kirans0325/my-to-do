@@ -10,6 +10,10 @@ jobs:
     name: 📱 Build Android APK
     runs-on: ubuntu-latest
 
+    env:
+      _JAVA_OPTIONS: "-Xmx4096m"
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.vfs.watch=false"
+
     steps:
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@v4
@@ -33,11 +37,15 @@ jobs:
 
       - name: 📱 Generate Native Android Project
         working-directory: frontend
-        run: npx expo prebuild --platform android --clean
+        run: |
+          npx expo prebuild --platform android --clean
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError" >> android/gradle.properties
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=false" >> android/gradle.properties
 
       - name: 🏗️ Build Installable Android APK
         working-directory: frontend/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: 🔍 List Generated APK Files
         working-directory: frontend/android
