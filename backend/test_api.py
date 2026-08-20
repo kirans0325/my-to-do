@@ -127,6 +127,14 @@ async def run_tests():
         assert stats_b.json()["total_tasks"] == 0
         print("  [OK] Per-user stats verified: User A has 1 task, User B has 0 tasks")
 
+        # 11. Admin login verification
+        admin_login = await client.post("/api/v1/auth/login", json={
+            "login": "admin@taskflow.app",
+            "password": "Admin@123456"
+        })
+        assert admin_login.status_code == 200, f"Admin login failed: {admin_login.text}"
+        print("  [OK] Admin user logged in successfully with admin@taskflow.app / Admin@123456")
+
     print("\n[SUCCESS] ALL STRICT USER ISOLATION TESTS PASSED SUCCESSFULLY!")
 
 if __name__ == "__main__":

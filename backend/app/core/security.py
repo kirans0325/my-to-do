@@ -6,9 +6,9 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
 import jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -19,11 +19,13 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "taskflow-super-secret-jwt-key-2026-sec
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 http_bearer = HTTPBearer(auto_error=False)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if not hashed_password or not plain_password:
+        return False
     try:
+        # 1. PBKDF2 format (pbkdf2:salt_hex:hash_hex)
         if hashed_password.startswith("pbkdf2:"):
             parts = hashed_password.split(":")
             if len(parts) == 3:
@@ -31,23 +33,22 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
                 expected_hash = parts[2]
                 computed = hashlib.pbkdf2_hmac("sha256", plain_password.encode("utf-8"), salt, 100000).hex()
                 return hmac.compare_digest(computed, expected_hash)
+
+        # 2. Standard bcrypt format ($2a$, $2b$, $2y$)
+        if hashed_password.startswith(("$2a$", "$2b$", "$2y$")):
+            return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+
+        # 3. Fallback passlib check
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         return pwd_context.verify(plain_password, hashed_password)
     except Exception:
-        # Fallback PBKDF2 hash check
-        try:
-            salt = b"taskflow_fixed_salt_2026"
-            computed = hashlib.pbkdf2_hmac("sha256", plain_password.encode("utf-8"), salt, 100000).hex()
-            return hmac.compare_digest(computed, hashed_password)
-        except Exception:
-            return False
+        return False
 
 def get_password_hash(password: str) -> str:
-    try:
-        return pwd_context.hash(password)
-    except Exception:
-        salt = os.urandom(16)
-        hash_hex = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000).hex()
-        return f"pbkdf2:{salt.hex()}:{hash_hex}"
+    salt = os.urandom(16)
+    hash_hex = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000).hex()
+    return f"pbkdf2:{salt.hex()}:{hash_hex}"
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
