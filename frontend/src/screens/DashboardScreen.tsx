@@ -89,9 +89,17 @@ export const DashboardScreen: React.FC = () => {
               Daily Habits & Streaks
             </Text>
           </View>
-          <Text style={[styles.habitCount, { color: currentTheme.colors.textSecondary }]}>
-            {habits.filter((h) => h.completed).length}/{habits.length} Done
-          </Text>
+          {habits.length > 0 ? (
+            <Text style={[styles.habitCount, { color: currentTheme.colors.textSecondary }]}>
+              {habits.filter((h) => h.completed).length}/{habits.length} Done
+            </Text>
+          ) : (
+            <TouchableOpacity onPress={() => setCreateTaskModalOpen(true)}>
+              <Text style={[styles.sectionLink, { color: currentTheme.colors.primary }]}>
+                + Add Habit
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {habits.length > 0 ? (
@@ -101,17 +109,28 @@ export const DashboardScreen: React.FC = () => {
             ))}
           </View>
         ) : (
-          <View style={[styles.emptyDiaryPrompt, { backgroundColor: currentTheme.colors.surface, marginBottom: 16 }]}>
-            <Text style={styles.emptyDiaryIcon}>🌱</Text>
+          <TouchableOpacity
+            style={[
+              styles.emptyDiaryPrompt,
+              {
+                backgroundColor: currentTheme.colors.surface,
+                borderColor: `${currentTheme.colors.primary}44`,
+                marginBottom: 16,
+              },
+            ]}
+            onPress={() => setCreateTaskModalOpen(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.emptyDiaryIcon}>➕</Text>
             <View style={{ flex: 1 }}>
               <Text style={[styles.emptyDiaryTitle, { color: currentTheme.colors.text }]}>
-                No daily habits set yet
+                + Add Task or Daily Habit
               </Text>
               <Text style={[styles.emptyDiarySubtitle, { color: currentTheme.colors.textSecondary }]}>
-                Create daily recurring tasks to build your habit streak.
+                No daily habits created yet. Tap here to add your first task or habit.
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
 
         {/* Metrics Row */}
