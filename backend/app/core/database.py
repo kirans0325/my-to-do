@@ -73,6 +73,9 @@ async def init_db():
                 await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;"))
                 await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_user_id ON tasks(user_id);"))
                 await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_diary_user_id ON diary_entries(user_id);"))
+                # Drop old single-column unique index on entry_date if present to allow multiple users per date
+                await conn.execute(text("DROP INDEX IF EXISTS ix_diary_entries_entry_date;"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_diary_entries_entry_date ON diary_entries(entry_date);"))
             elif settings.is_sqlite:
                 # SQLite fallback
                 try:

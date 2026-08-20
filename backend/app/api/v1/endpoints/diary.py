@@ -30,6 +30,8 @@ async def list_diary_entries(
 
     if current_user:
         conditions.append(or_(DiaryEntry.user_id == current_user.id, DiaryEntry.user_id == None))
+    else:
+        conditions.append(DiaryEntry.user_id == None)
 
     if start_date:
         conditions.append(DiaryEntry.entry_date >= start_date)
@@ -54,6 +56,8 @@ async def get_diary_by_date(
     conditions = [DiaryEntry.entry_date == entry_date]
     if current_user:
         conditions.append(or_(DiaryEntry.user_id == current_user.id, DiaryEntry.user_id == None))
+    else:
+        conditions.append(DiaryEntry.user_id == None)
 
     stmt = select(DiaryEntry).where(and_(*conditions))
     entry = (await db.execute(stmt)).scalar_one_or_none()
@@ -103,12 +107,18 @@ async def create_or_upsert_diary_entry(
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_diary_entry(
     entry_id: int,
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     stmt = select(DiaryEntry).where(DiaryEntry.id == entry_id)
     entry = (await db.execute(stmt)).scalar_one_or_none()
     if not entry:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diary entry not found.")
+    
+    user_id = current_user.id if current_user else None
+    if entry.user_id is not None and entry.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to delete this diary entry.")
+
     await db.delete(entry)
     await db.commit()
     return None

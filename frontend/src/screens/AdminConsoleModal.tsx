@@ -99,10 +99,10 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({ visible, o
       return;
     }
 
-    const confirmed =
-      Platform.OS === 'web'
-        ? window.confirm(`Are you sure you want to delete user '${user.username}' (${user.email})? This will permanently remove their tasks and diary entries.`)
-        : true;
+    let confirmed = true;
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      confirmed = window.confirm(`Are you sure you want to delete user '${user.username}' (${user.email})?`);
+    }
 
     if (!confirmed) return;
 
@@ -110,7 +110,7 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({ visible, o
       await authApi.deleteUser(user.id);
       fetchAnalytics();
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to delete user.');
+      console.warn('Delete user error:', err);
     }
   };
 

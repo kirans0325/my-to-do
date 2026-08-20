@@ -273,10 +273,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       currentUser: null,
       authToken: null,
-      tasks: defaultTasks,
+      tasks: [],
       diaryEntries: [],
       stats: defaultStats,
     });
+    get().fetchAllData();
   },
 
   activeTab: 'dashboard',

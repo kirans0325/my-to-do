@@ -1,11 +1,13 @@
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, or_, func
 from app.core.database import get_db
 from app.models.reminder import ReminderLog
 from app.models.task import Task
+from app.models.user import User
+from app.core.security import get_current_user_optional
 from app.schemas.reminder_schema import ReminderLogResponse, AlertSummary
 from app.services.alert_service import scan_and_generate_alerts
 
@@ -14,11 +16,21 @@ router = APIRouter(prefix="/reminders", tags=["Reminders & Alerts"])
 @router.get("", response_model=List[ReminderLogResponse])
 async def list_reminders(
     unacknowledged_only: bool = Query(True, description="Filter only unacknowledged alerts"),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(ReminderLog)
+    query = select(ReminderLog).join(Task, ReminderLog.task_id == Task.id)
+    conditions = []
     if unacknowledged_only:
-        query = query.where(ReminderLog.is_acknowledged == False)
+        conditions.append(ReminderLog.is_acknowledged == False)
+    if current_user:
+        conditions.append(or_(Task.user_id == current_user.id, Task.user_id == None))
+    else:
+        conditions.append(Task.user_id == None)
+
+    if conditions:
+        query = query.where(and_(*conditions))
+
     query = query.order_by(ReminderLog.triggered_at.desc())
     result = await db.execute(query)
     return result.scalars().all()
@@ -34,19 +46,29 @@ async def trigger_alert_scan(db: AsyncSession = Depends(get_db)):
     }
 
 @router.get("/summary", response_model=AlertSummary)
-async def get_alert_summary(db: AsyncSession = Depends(get_db)):
+async def get_alert_summary(
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db)
+):
+    if current_user:
+        task_user_cond = or_(Task.user_id == current_user.id, Task.user_id == None)
+    else:
+        task_user_cond = (Task.user_id == None)
+
     # 1. Total Overdue tasks
-    overdue_stmt = select(func.count(Task.id)).where(Task.status == "OVERDUE")
+    overdue_stmt = select(func.count(Task.id)).where(and_(Task.status == "OVERDUE", task_user_cond))
     overdue_count = (await db.execute(overdue_stmt)).scalar() or 0
 
     # 2. Total Urgent Overdue/Pending
     urgent_stmt = select(func.count(Task.id)).where(
-        and_(Task.priority == "URGENT", Task.status.in_(["PENDING", "IN_PROGRESS", "OVERDUE"]))
+        and_(Task.priority == "URGENT", Task.status.in_(["PENDING", "IN_PROGRESS", "OVERDUE"]), task_user_cond)
     )
     urgent_count = (await db.execute(urgent_stmt)).scalar() or 0
 
     # 3. Unacknowledged Reminder Logs
-    unack_stmt = select(func.count(ReminderLog.id)).where(ReminderLog.is_acknowledged == False)
+    unack_stmt = select(func.count(ReminderLog.id)).join(Task, ReminderLog.task_id == Task.id).where(
+        and_(ReminderLog.is_acknowledged == False, task_user_cond)
+    )
     unack_count = (await db.execute(unack_stmt)).scalar() or 0
 
     return AlertSummary(

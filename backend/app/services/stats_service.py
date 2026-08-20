@@ -1,27 +1,35 @@
+from typing import List, Dict, Tuple, Optional
 from datetime import datetime, timezone, timedelta, date
-from typing import List, Dict, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, case, distinct
+from sqlalchemy import select, func, and_, or_, case, distinct
 from app.models.task import Task
 from app.models.category import Category
 from app.models.diary import DiaryEntry
+from app.models.user import User
 from app.schemas.stats_schema import (
     OverviewStatsResponse,
     FrequencyBreakdown,
     CategoryBreakdown
 )
 
-async def calculate_overview_stats(db: AsyncSession) -> OverviewStatsResponse:
+async def calculate_overview_stats(db: AsyncSession, current_user: Optional[User] = None) -> OverviewStatsResponse:
     """
     Highly optimized SQL-level statistical aggregation with minimal Python memory footprint.
-    Performs grouping and count aggregations directly in the database engine.
+    Performs grouping and count aggregations directly in the database engine with per-user filtering.
     """
+    if current_user:
+        task_user_cond = or_(Task.user_id == current_user.id, Task.user_id == None)
+        diary_user_cond = or_(DiaryEntry.user_id == current_user.id, DiaryEntry.user_id == None)
+    else:
+        task_user_cond = (Task.user_id == None)
+        diary_user_cond = (DiaryEntry.user_id == None)
+
     # 1. Aggregate Task Statuses and Recurrences in a single SQL query
     status_stmt = select(
         Task.recurrence_type,
         Task.status,
         func.count(Task.id).label("count")
-    ).group_by(Task.recurrence_type, Task.status)
+    ).where(task_user_cond).group_by(Task.recurrence_type, Task.status)
     
     status_results = (await db.execute(status_stmt)).all()
 
@@ -74,7 +82,7 @@ async def calculate_overview_stats(db: AsyncSession) -> OverviewStatsResponse:
         Category.color,
         func.count(Task.id).label("total"),
         func.count(case((Task.status == "COMPLETED", 1))).label("completed")
-    ).outerjoin(Task, Task.category_id == Category.id).group_by(Category.id, Category.name, Category.color)
+    ).outerjoin(Task, and_(Task.category_id == Category.id, task_user_cond)).group_by(Category.id, Category.name, Category.color)
 
     cat_results = (await db.execute(cat_stmt)).all()
     cat_breakdowns: List[CategoryBreakdown] = [
@@ -92,14 +100,18 @@ async def calculate_overview_stats(db: AsyncSession) -> OverviewStatsResponse:
     ninety_days_ago = date.today() - timedelta(days=90)
     
     diary_dates_stmt = select(distinct(DiaryEntry.entry_date)).where(
-        DiaryEntry.entry_date >= ninety_days_ago
+        and_(
+            DiaryEntry.entry_date >= ninety_days_ago,
+            diary_user_cond
+        )
     )
     diary_dates = set((await db.execute(diary_dates_stmt)).scalars().all())
 
     task_dates_stmt = select(distinct(func.date(Task.completed_at))).where(
         and_(
             Task.completed_at.is_not(None),
-            Task.completed_at >= datetime.now(timezone.utc) - timedelta(days=90)
+            Task.completed_at >= datetime.now(timezone.utc) - timedelta(days=90),
+            task_user_cond
         )
     )
     task_date_strs = (await db.execute(task_dates_stmt)).scalars().all()
@@ -137,7 +149,7 @@ async def calculate_overview_stats(db: AsyncSession) -> OverviewStatsResponse:
     diary_stats_stmt = select(
         func.count(DiaryEntry.id),
         func.coalesce(func.avg(DiaryEntry.productivity_score), 0.0)
-    )
+    ).where(diary_user_cond)
     diary_count, avg_productivity = (await db.execute(diary_stats_stmt)).one()
 
     return OverviewStatsResponse(

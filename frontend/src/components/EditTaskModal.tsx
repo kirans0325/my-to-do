@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { getTheme } from '../utils/theme';
 import { RecurrenceType, PriorityLevel, Subtask } from '../types';
@@ -133,7 +134,7 @@ export const EditTaskModal: React.FC = () => {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      alert('Please enter a task title');
+      Alert.alert('Required', 'Please enter a task title');
       return;
     }
 

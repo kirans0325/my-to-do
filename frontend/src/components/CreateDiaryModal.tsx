@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { getTheme } from '../utils/theme';
 import { MoodType, DailyActivity } from '../types';
@@ -73,7 +74,7 @@ export const CreateDiaryModal: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!content.trim()) {
-      alert('Please write your journal entry or daily reflections.');
+      Alert.alert('Required', 'Please write your journal entry or daily reflections.');
       return;
     }
 

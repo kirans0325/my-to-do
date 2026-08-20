@@ -40,6 +40,8 @@ async def list_tasks(
     # Multi-user isolation
     if current_user:
         conditions.append(or_(Task.user_id == current_user.id, Task.user_id == None))
+    else:
+        conditions.append(Task.user_id == None)
     
     if recurrence_type:
         conditions.append(Task.recurrence_type == recurrence_type.upper())
@@ -95,6 +97,7 @@ async def create_task(
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(
     task_id: int,
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     stmt = select(Task).options(
@@ -105,12 +108,18 @@ async def get_task(
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
+    
+    user_id = current_user.id if current_user else None
+    if task.user_id is not None and task.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Task access denied.")
+
     return task
 
 @router.put("/{task_id}", response_model=TaskResponse)
 async def update_task(
     task_id: int,
     task_in: TaskUpdate,
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     stmt = select(Task).options(
@@ -120,6 +129,10 @@ async def update_task(
     task = (await db.execute(stmt)).scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
+
+    user_id = current_user.id if current_user else None
+    if task.user_id is not None and task.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Task modification denied.")
 
     update_data = task_in.model_dump(exclude_unset=True)
     if "subtasks" in update_data and update_data["subtasks"] is not None:
@@ -137,6 +150,7 @@ async def update_task(
 async def update_task_progress(
     task_id: int,
     progress_in: ProgressLogCreate,
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     stmt = select(Task).options(
@@ -146,6 +160,10 @@ async def update_task_progress(
     task = (await db.execute(stmt)).scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
+
+    user_id = current_user.id if current_user else None
+    if task.user_id is not None and task.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Task progress update denied.")
 
     task.progress_percentage = progress_in.progress_value
     if progress_in.progress_value >= 100:
@@ -170,6 +188,7 @@ async def update_task_progress(
 @router.post("/{task_id}/complete", response_model=TaskResponse)
 async def complete_task(
     task_id: int,
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     stmt = select(Task).options(
@@ -179,6 +198,10 @@ async def complete_task(
     task = (await db.execute(stmt)).scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
+
+    user_id = current_user.id if current_user else None
+    if task.user_id is not None and task.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Task completion denied.")
 
     # If it is a recurring task, calculate and advance next cycle
     if task.recurrence_type != "NONE":
@@ -205,6 +228,7 @@ async def complete_task(
 async def toggle_subtask(
     task_id: int,
     subtask_id: int,
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     stmt = select(Task).options(
@@ -214,6 +238,10 @@ async def toggle_subtask(
     task = (await db.execute(stmt)).scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
+
+    user_id = current_user.id if current_user else None
+    if task.user_id is not None and task.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Subtask modification denied.")
 
     subtasks = task.subtasks or []
     updated = False
@@ -247,12 +275,17 @@ async def toggle_subtask(
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
     task_id: int,
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     stmt = select(Task).where(Task.id == task_id)
     task = (await db.execute(stmt)).scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
+
+    user_id = current_user.id if current_user else None
+    if task.user_id is not None and task.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Task deletion denied.")
 
     await db.delete(task)
     await db.commit()
@@ -265,6 +298,7 @@ class SnoozeInput(BaseModel):
 async def snooze_task(
     task_id: int,
     payload: SnoozeInput = SnoozeInput(),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
     """Snooze task alarm/due_date by N minutes."""
@@ -275,6 +309,10 @@ async def snooze_task(
     task = (await db.execute(stmt)).scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
+
+    user_id = current_user.id if current_user else None
+    if task.user_id is not None and task.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Task snooze denied.")
 
     from datetime import timedelta
     now_utc = datetime.now(timezone.utc)

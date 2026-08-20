@@ -10,6 +10,7 @@ declare module 'react-native' {
   export const ActivityIndicator: any;
   export const StatusBar: any;
   export const SafeAreaView: any;
+  export const Alert: any;
   export const Platform: {
     OS: 'ios' | 'android' | 'web' | 'windows' | 'macos';
     select: (obj: any) => any;

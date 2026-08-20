@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  Alert,
 } from 'react-native';
 import { getTheme } from '../utils/theme';
 import { RecurrenceType, PriorityLevel, Subtask } from '../types';
@@ -118,7 +119,7 @@ export const CreateTaskModal: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      alert('Please enter a task title');
+      Alert.alert('Required', 'Please enter a task title');
       return;
     }
 
