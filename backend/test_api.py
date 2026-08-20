@@ -5,7 +5,7 @@ from app.main import app
 from app.core.database import init_db
 
 async def run_tests():
-    print("[*] Running comprehensive API tests with User Isolation check...")
+    print("[*] Running comprehensive API tests with Strict User Isolation check...")
     await init_db()
 
     transport = httpx.ASGITransport(app=app)
@@ -22,7 +22,17 @@ async def run_tests():
         assert len(categories) > 0
         print(f"  [OK] Categories listed: {len(categories)} categories")
 
-        # 3. Create a test user A
+        # 3. Unauthenticated requests return 0 tasks and 0 notes
+        unauth_tasks = await client.get("/api/v1/tasks")
+        assert unauth_tasks.status_code == 200
+        assert len(unauth_tasks.json()) == 0, "Unauthenticated client should see 0 tasks!"
+        
+        unauth_diary = await client.get("/api/v1/diary")
+        assert unauth_diary.status_code == 200
+        assert len(unauth_diary.json()) == 0, "Unauthenticated client should see 0 diary notes!"
+        print("  [OK] Unauthenticated client sees zero tasks and zero notes")
+
+        # 4. Create a test user A
         unique_suffix = str(uuid.uuid4())[:8]
         user_a_name = f"user_a_{unique_suffix}"
         user_a_email = f"usera_{unique_suffix}@example.com"
@@ -36,7 +46,18 @@ async def run_tests():
         headers_a = {"Authorization": f"Bearer {token_a}"}
         print("  [OK] Registered User A successfully")
 
-        # 4. User A creates a private diary note
+        # 5. User A creates a private task and diary note
+        task_payload_a = {
+            "title": "User A Private Task",
+            "description": "Task created by User A only",
+            "recurrence_type": "DAILY",
+            "priority": "HIGH",
+            "category_id": categories[0]["id"]
+        }
+        res_task = await client.post("/api/v1/tasks", json=task_payload_a, headers=headers_a)
+        assert res_task.status_code == 201
+        task_a_id = res_task.json()["id"]
+
         diary_payload_a = {
             "entry_date": "2026-08-20",
             "title": "User A Private Notes",
@@ -45,17 +66,10 @@ async def run_tests():
             "productivity_score": 9,
             "tags": "private,secret"
         }
-        res = await client.post("/api/v1/diary", json=diary_payload_a, headers=headers_a)
-        assert res.status_code == 201, f"User A diary creation failed: {res.text}"
-        diary_a_id = res.json()["id"]
-        print("  [OK] User A created a private diary entry")
-
-        # 5. Verify unauthenticated client CANNOT see User A's private diary notes
-        unauth_notes = await client.get("/api/v1/diary")
-        assert unauth_notes.status_code == 200
-        unauth_note_ids = [d["id"] for d in unauth_notes.json()]
-        assert diary_a_id not in unauth_note_ids, "SECURITY BUG: Unauthenticated user saw User A's private diary note!"
-        print("  [OK] Unauthenticated client cannot see User A's notes")
+        res_diary = await client.post("/api/v1/diary", json=diary_payload_a, headers=headers_a)
+        assert res_diary.status_code == 201
+        diary_a_id = res_diary.json()["id"]
+        print("  [OK] User A created private task and diary entry")
 
         # 6. Create test user B
         user_b_name = f"user_b_{unique_suffix}"
@@ -70,35 +84,50 @@ async def run_tests():
         headers_b = {"Authorization": f"Bearer {token_b}"}
         print("  [OK] Registered User B successfully")
 
-        # 7. Verify User B CANNOT see User A's private diary notes
+        # 7. Verify User B CANNOT see User A's tasks or notes
+        b_tasks = await client.get("/api/v1/tasks", headers=headers_b)
+        assert b_tasks.status_code == 200
+        assert len(b_tasks.json()) == 0, "SECURITY BUG: Newly created User B saw User A's task!"
+
         b_notes = await client.get("/api/v1/diary", headers=headers_b)
         assert b_notes.status_code == 200
-        b_note_ids = [d["id"] for d in b_notes.json()]
-        assert diary_a_id not in b_note_ids, "SECURITY BUG: User B saw User A's private diary note!"
-        print("  [OK] User B cannot see User A's notes")
+        assert len(b_notes.json()) == 0, "SECURITY BUG: Newly created User B saw User A's diary note!"
+        print("  [OK] User B starts with 0 tasks and 0 notes, completely isolated from User A")
 
-        # 8. Verify User A CAN see their own diary note
+        # 8. Verify User A CAN see their own task and diary note
+        a_tasks = await client.get("/api/v1/tasks", headers=headers_a)
+        assert a_tasks.status_code == 200
+        assert len(a_tasks.json()) == 1
+        assert a_tasks.json()[0]["id"] == task_a_id
+
         a_notes = await client.get("/api/v1/diary", headers=headers_a)
         assert a_notes.status_code == 200
-        a_note_ids = [d["id"] for d in a_notes.json()]
-        assert diary_a_id in a_note_ids, "User A could not retrieve their own note!"
-        print("  [OK] User A can see their own diary note")
+        assert len(a_notes.json()) == 1
+        assert a_notes.json()[0]["id"] == diary_a_id
+        print("  [OK] User A sees exactly their own task and diary note")
 
-        # 9. Verify User B CANNOT delete User A's diary note
+        # 9. Verify User B CANNOT delete or modify User A's task or diary note
         del_attempt = await client.delete(f"/api/v1/diary/{diary_a_id}", headers=headers_b)
-        assert del_attempt.status_code == 403, f"Expected 403 Forbidden, got: {del_attempt.status_code}"
-        print("  [OK] User B forbidden from deleting User A's note")
+        assert del_attempt.status_code == 403
+        
+        task_del_attempt = await client.delete(f"/api/v1/tasks/{task_a_id}", headers=headers_b)
+        assert task_del_attempt.status_code == 403
+        print("  [OK] User B forbidden from modifying or deleting User A's tasks/notes")
 
-        # 10. Alert Scan & Overview Stats
+        # 10. Alert Scan & Per-User Overview Stats
         res = await client.post("/api/v1/reminders/scan")
         assert res.status_code == 200
         
-        stats = await client.get("/api/v1/stats/overview", headers=headers_a)
-        assert stats.status_code == 200
-        assert "daily_stats" in stats.json()
-        print("  [OK] Per-user overview stats calculated successfully")
+        stats_a = await client.get("/api/v1/stats/overview", headers=headers_a)
+        assert stats_a.status_code == 200
+        assert stats_a.json()["total_tasks"] == 1
 
-    print("\n[SUCCESS] ALL API AND USER ISOLATION TESTS PASSED SUCCESSFULLY!")
+        stats_b = await client.get("/api/v1/stats/overview", headers=headers_b)
+        assert stats_b.status_code == 200
+        assert stats_b.json()["total_tasks"] == 0
+        print("  [OK] Per-user stats verified: User A has 1 task, User B has 0 tasks")
+
+    print("\n[SUCCESS] ALL STRICT USER ISOLATION TESTS PASSED SUCCESSFULLY!")
 
 if __name__ == "__main__":
     asyncio.run(run_tests())

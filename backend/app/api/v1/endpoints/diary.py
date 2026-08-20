@@ -26,12 +26,10 @@ async def list_diary_entries(
     db: AsyncSession = Depends(get_db)
 ):
     query = select(DiaryEntry)
-    conditions = []
+    if not current_user:
+        return []
 
-    if current_user:
-        conditions.append(or_(DiaryEntry.user_id == current_user.id, DiaryEntry.user_id == None))
-    else:
-        conditions.append(DiaryEntry.user_id == None)
+    conditions = [DiaryEntry.user_id == current_user.id]
 
     if start_date:
         conditions.append(DiaryEntry.entry_date >= start_date)
@@ -40,8 +38,7 @@ async def list_diary_entries(
     if mood:
         conditions.append(DiaryEntry.mood == mood.upper())
     
-    if conditions:
-        query = query.where(and_(*conditions))
+    query = query.where(and_(*conditions))
 
     query = query.order_by(DiaryEntry.entry_date.desc()).limit(limit).offset(offset)
     result = await db.execute(query)
@@ -53,11 +50,13 @@ async def get_diary_by_date(
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
-    conditions = [DiaryEntry.entry_date == entry_date]
-    if current_user:
-        conditions.append(or_(DiaryEntry.user_id == current_user.id, DiaryEntry.user_id == None))
-    else:
-        conditions.append(DiaryEntry.user_id == None)
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No diary entry found for date {entry_date}."
+        )
+
+    conditions = [DiaryEntry.entry_date == entry_date, DiaryEntry.user_id == current_user.id]
 
     stmt = select(DiaryEntry).where(and_(*conditions))
     entry = (await db.execute(stmt)).scalar_one_or_none()

@@ -35,13 +35,11 @@ async def list_tasks(
         selectinload(Task.progress_entries)
     )
     
-    conditions = []
+    # Multi-user strict isolation
+    if not current_user:
+        return []
 
-    # Multi-user isolation
-    if current_user:
-        conditions.append(or_(Task.user_id == current_user.id, Task.user_id == None))
-    else:
-        conditions.append(Task.user_id == None)
+    conditions = [Task.user_id == current_user.id]
     
     if recurrence_type:
         conditions.append(Task.recurrence_type == recurrence_type.upper())
@@ -60,8 +58,7 @@ async def list_tasks(
             )
         )
         
-    if conditions:
-        query = query.where(and_(*conditions))
+    query = query.where(and_(*conditions))
         
     # Order by due_date ascending (nulls last), then priority
     query = query.order_by(Task.due_date.asc().nulls_last(), Task.id.desc())

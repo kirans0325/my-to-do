@@ -36,26 +36,23 @@ export const DashboardScreen: React.FC = () => {
   const todayStr = getTodayDateString();
   const todayDiary = diaryEntries.find((d) => d.entry_date === todayStr);
 
-  // Local TickTick Habit tracker items
-  const [habits, setHabits] = useState<HabitItem[]>([
-    { id: 1, name: 'Drink 2.5L Water', emoji: '💧', color: currentTheme.colors.habits.cyan, target: 'Daily', completed: true, streak: 5 },
-    { id: 2, name: '30min Fitness / Run', emoji: '🏃', color: currentTheme.colors.habits.emerald, target: 'Daily', completed: false, streak: 3 },
-    { id: 3, name: 'Read 20 Pages', emoji: '📚', color: currentTheme.colors.habits.purple, target: 'Daily', completed: false, streak: 7 },
-    { id: 4, name: 'Deep Work Sprint', emoji: '💻', color: currentTheme.colors.habits.blue, target: 'Daily', completed: true, streak: 12 },
-  ]);
+  // Dynamic habit tracker derived from user's actual daily tasks
+  const dailyTasks = tasks.filter((t) => t.recurrence_type === 'DAILY');
+  const habits: HabitItem[] = dailyTasks.map((t) => ({
+    id: t.id,
+    name: t.title,
+    emoji: '⚡',
+    color: t.category?.color || currentTheme.colors.primary,
+    target: 'Daily',
+    completed: t.status === 'COMPLETED',
+    streak: stats?.current_streak_days || 0,
+  }));
 
   const handleToggleHabit = (id: number) => {
-    setHabits((prev) =>
-      prev.map((h) =>
-        h.id === id
-          ? {
-              ...h,
-              completed: !h.completed,
-              streak: !h.completed ? h.streak + 1 : Math.max(0, h.streak - 1),
-            }
-          : h
-      )
-    );
+    const targetTask = tasks.find((t) => t.id === id);
+    if (targetTask) {
+      useAppStore.getState().toggleTaskComplete(id);
+    }
   };
 
   // Today's tasks (due today or daily tasks)
@@ -84,7 +81,7 @@ export const DashboardScreen: React.FC = () => {
         {/* Overdue Alert Banner */}
         <OverdueBanner />
 
-        {/* TickTick Habit Check-In Carousel */}
+        {/* Daily Habits & Streaks */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionEmoji}>✨</Text>
@@ -97,26 +94,40 @@ export const DashboardScreen: React.FC = () => {
           </Text>
         </View>
 
-        <View style={styles.habitsGrid}>
-          {habits.map((habit) => (
-            <HabitRing key={habit.id} habit={habit} onToggle={handleToggleHabit} />
-          ))}
-        </View>
+        {habits.length > 0 ? (
+          <View style={styles.habitsGrid}>
+            {habits.map((habit) => (
+              <HabitRing key={habit.id} habit={habit} onToggle={handleToggleHabit} />
+            ))}
+          </View>
+        ) : (
+          <View style={[styles.emptyDiaryPrompt, { backgroundColor: currentTheme.colors.surface, marginBottom: 16 }]}>
+            <Text style={styles.emptyDiaryIcon}>🌱</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.emptyDiaryTitle, { color: currentTheme.colors.text }]}>
+                No daily habits set yet
+              </Text>
+              <Text style={[styles.emptyDiarySubtitle, { color: currentTheme.colors.textSecondary }]}>
+                Create daily recurring tasks to build your habit streak.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Metrics Row */}
         <View style={styles.statsGrid}>
           <StatCard
             title="Today's Progress"
-            value={`${stats?.overall_completion_rate || 23.3}%`}
-            subtitle={`${stats?.completed_tasks || 0} of ${stats?.total_tasks || 0} tasks`}
-            progressPercent={stats?.overall_completion_rate || 23.3}
+            value={`${stats?.overall_completion_rate ?? 0}%`}
+            subtitle={`${stats?.completed_tasks ?? 0} of ${stats?.total_tasks ?? 0} tasks`}
+            progressPercent={stats?.overall_completion_rate ?? 0}
             accentColor={currentTheme.colors.primary}
             icon="📊"
           />
 
           <StatCard
             title="Habit Streak"
-            value={`${stats?.current_streak_days || 1} Days`}
+            value={`${stats?.current_streak_days ?? 0} Days`}
             subtitle="Consistency is key!"
             badgeText="Streak"
             badgeColor={currentTheme.colors.warning}
@@ -126,7 +137,7 @@ export const DashboardScreen: React.FC = () => {
 
           <StatCard
             title="Overdue Tasks"
-            value={stats?.overdue_tasks || 0}
+            value={stats?.overdue_tasks ?? 0}
             subtitle={stats?.overdue_tasks ? 'Needs attention' : 'All clear!'}
             badgeText={stats?.overdue_tasks ? 'Urgent' : 'Clear'}
             badgeColor={stats?.overdue_tasks ? currentTheme.colors.danger : currentTheme.colors.success}

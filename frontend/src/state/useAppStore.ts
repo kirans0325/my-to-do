@@ -28,77 +28,29 @@ const defaultCategories: Category[] = [
   { id: 4, name: 'Finance', color: '#8B5CF6', icon: 'credit-card' },
 ];
 
-const defaultTasks: Task[] = [
-  {
-    id: 1,
-    title: 'Daily Standup & Goal Review',
-    description: 'Review daily priority tasks and milestones',
-    recurrence_type: 'DAILY',
-    recurrence_interval: 1,
-    priority: 'HIGH',
-    status: 'PENDING',
-    progress_percentage: 50,
-    category_id: 1,
-    category: defaultCategories[0],
-    subtasks: [
-      { id: 1, title: 'Check emails and notifications', completed: true },
-      { id: 2, title: 'Plan top 3 daily priorities', completed: false },
-    ],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    title: '30-Minute Evening Workout / Walk',
-    description: 'Daily fitness and physical activity routine',
-    recurrence_type: 'DAILY',
-    recurrence_interval: 1,
-    priority: 'MEDIUM',
-    status: 'PENDING',
-    progress_percentage: 0,
-    category_id: 3,
-    category: defaultCategories[2],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 3,
-    title: 'Monthly Server Backup & Cloud Sync',
-    description: 'Backup local tasks database to cloud storage',
-    recurrence_type: 'MONTHLY',
-    recurrence_interval: 1,
-    priority: 'HIGH',
-    status: 'PENDING',
-    progress_percentage: 20,
-    category_id: 1,
-    category: defaultCategories[0],
-    due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }
-];
+const defaultTasks: Task[] = [];
 
 const defaultStats: OverviewStats = {
-  total_tasks: defaultTasks.length,
+  total_tasks: 0,
   completed_tasks: 0,
-  in_progress_tasks: 2,
-  pending_tasks: 1,
+  in_progress_tasks: 0,
+  pending_tasks: 0,
   overdue_tasks: 0,
-  overall_completion_rate: 23.3,
-  current_streak_days: 1,
+  overall_completion_rate: 0.0,
+  current_streak_days: 0,
   daily_stats: {
-    total: 2,
+    total: 0,
     completed: 0,
     overdue: 0,
-    in_progress: 1,
-    completion_rate: 25.0
+    in_progress: 0,
+    completion_rate: 0.0
   },
   monthly_stats: {
-    total: 1,
+    total: 0,
     completed: 0,
     overdue: 0,
-    in_progress: 1,
-    completion_rate: 20.0
+    in_progress: 0,
+    completion_rate: 0.0
   },
   yearly_stats: {
     total: 0,
@@ -118,11 +70,11 @@ const defaultStats: OverviewStats = {
     category_id: c.id,
     category_name: c.name,
     color: c.color,
-    total: c.id === 1 ? 2 : (c.id === 3 ? 1 : 0),
+    total: 0,
     completed: 0
   })),
   total_diary_entries: 0,
-  average_productivity: 8.0
+  average_productivity: 0.0
 };
 
 interface AppState {
@@ -328,7 +280,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       ]);
 
       set({
-        tasks: tasks.length > 0 ? tasks : get().tasks,
+        tasks,
         categories: categories.length > 0 ? categories : defaultCategories,
         reminders,
         alertSummary,
@@ -349,7 +301,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchTasks: async () => {
     try {
       const tasks = await taskApi.getTasks();
-      if (tasks.length > 0) set({ tasks });
+      set({ tasks });
     } catch (err: any) {
       console.warn('Fetch tasks offline fallback');
     }

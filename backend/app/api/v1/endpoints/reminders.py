@@ -19,19 +19,15 @@ async def list_reminders(
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
+    if not current_user:
+        return []
+
     query = select(ReminderLog).join(Task, ReminderLog.task_id == Task.id)
-    conditions = []
+    conditions = [Task.user_id == current_user.id]
     if unacknowledged_only:
         conditions.append(ReminderLog.is_acknowledged == False)
-    if current_user:
-        conditions.append(or_(Task.user_id == current_user.id, Task.user_id == None))
-    else:
-        conditions.append(Task.user_id == None)
 
-    if conditions:
-        query = query.where(and_(*conditions))
-
-    query = query.order_by(ReminderLog.triggered_at.desc())
+    query = query.where(and_(*conditions)).order_by(ReminderLog.triggered_at.desc())
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -50,10 +46,15 @@ async def get_alert_summary(
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
-    if current_user:
-        task_user_cond = or_(Task.user_id == current_user.id, Task.user_id == None)
-    else:
-        task_user_cond = (Task.user_id == None)
+    if not current_user:
+        return AlertSummary(
+            total_overdue=0,
+            total_upcoming_today=0,
+            urgent_alerts=0,
+            unacknowledged_alerts=0
+        )
+
+    task_user_cond = (Task.user_id == current_user.id)
 
     # 1. Total Overdue tasks
     overdue_stmt = select(func.count(Task.id)).where(and_(Task.status == "OVERDUE", task_user_cond))

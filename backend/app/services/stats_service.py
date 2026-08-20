@@ -17,12 +17,27 @@ async def calculate_overview_stats(db: AsyncSession, current_user: Optional[User
     Highly optimized SQL-level statistical aggregation with minimal Python memory footprint.
     Performs grouping and count aggregations directly in the database engine with per-user filtering.
     """
-    if current_user:
-        task_user_cond = or_(Task.user_id == current_user.id, Task.user_id == None)
-        diary_user_cond = or_(DiaryEntry.user_id == current_user.id, DiaryEntry.user_id == None)
-    else:
-        task_user_cond = (Task.user_id == None)
-        diary_user_cond = (DiaryEntry.user_id == None)
+    if not current_user:
+        empty_freq = FrequencyBreakdown(total=0, completed=0, overdue=0, in_progress=0, completion_rate=0.0)
+        return OverviewStatsResponse(
+            total_tasks=0,
+            completed_tasks=0,
+            in_progress_tasks=0,
+            pending_tasks=0,
+            overdue_tasks=0,
+            overall_completion_rate=0.0,
+            current_streak_days=0,
+            daily_stats=empty_freq,
+            monthly_stats=empty_freq,
+            yearly_stats=empty_freq,
+            one_time_stats=empty_freq,
+            categories=[],
+            total_diary_entries=0,
+            average_productivity=0.0
+        )
+
+    task_user_cond = (Task.user_id == current_user.id)
+    diary_user_cond = (DiaryEntry.user_id == current_user.id)
 
     # 1. Aggregate Task Statuses and Recurrences in a single SQL query
     status_stmt = select(
