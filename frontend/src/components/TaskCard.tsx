@@ -4,16 +4,26 @@ import { Task } from '../types';
 import { getTheme } from '../utils/theme';
 import { getRelativeDueLabel } from '../utils/dateUtils';
 import { useAppStore } from '../state/useAppStore';
-import { playTaskCompleteSound } from '../utils/soundEngine';
+import { playTaskCompleteSound, playSnoozeSound } from '../utils/soundEngine';
 
 interface TaskCardProps {
   task: Task;
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
-  const { toggleTaskComplete, updateTaskProgress, toggleSubtask, deleteTask, themeMode } = useAppStore();
+  const {
+    toggleTaskComplete,
+    updateTaskProgress,
+    toggleSubtask,
+    deleteTask,
+    setEditingTask,
+    snoozeTask,
+    themeMode,
+  } = useAppStore();
+
   const currentTheme = getTheme(themeMode);
   const [showSubtasks, setShowSubtasks] = useState(true);
+  const [showSnoozeMenu, setShowSnoozeMenu] = useState(false);
 
   const dueInfo = getRelativeDueLabel(task.due_date);
   const isDone = task.status === 'COMPLETED';
@@ -46,6 +56,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       playTaskCompleteSound();
     }
     updateTaskProgress(task.id, newProgress);
+  };
+
+  const handleSnooze = (minutes: number) => {
+    playSnoozeSound();
+    snoozeTask(task.id, minutes);
+    setShowSnoozeMenu(false);
   };
 
   return (
@@ -102,15 +118,90 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
           )}
         </View>
 
-        {/* Delete Action */}
-        <TouchableOpacity
-          style={styles.deleteBtn}
-          onPress={() => deleteTask(task.id)}
-          activeOpacity={0.6}
-        >
-          <Text style={[styles.deleteBtnText, { color: currentTheme.colors.textMuted }]}>✕</Text>
-        </TouchableOpacity>
+        {/* Top Header Actions (Edit & Delete) */}
+        <View style={styles.topActions}>
+          <TouchableOpacity
+            style={[styles.headerActionBtn, { backgroundColor: currentTheme.colors.surfaceLight }]}
+            onPress={() => setEditingTask(task)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.headerActionText}>✏️</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.headerActionBtn, { backgroundColor: currentTheme.colors.surfaceLight }]}
+            onPress={() => deleteTask(task.id)}
+            activeOpacity={0.6}
+          >
+            <Text style={[styles.headerActionText, { color: currentTheme.colors.danger }]}>✕</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Due Date & Snooze Row */}
+      {task.due_date && (
+        <View style={styles.dueRow}>
+          <View style={styles.dueLeft}>
+            <Text style={styles.dueEmoji}>{isOverdue && !isDone ? '🚨' : '⏰'}</Text>
+            <Text
+              style={[
+                styles.dueText,
+                { color: isOverdue && !isDone ? currentTheme.colors.danger : currentTheme.colors.textSecondary },
+              ]}
+            >
+              {dueInfo.text}
+            </Text>
+          </View>
+
+          {/* Snooze Trigger Button */}
+          {!isDone && (
+            <TouchableOpacity
+              style={[styles.snoozeTriggerBtn, { backgroundColor: currentTheme.colors.surfaceLight }]}
+              onPress={() => setShowSnoozeMenu(!showSnoozeMenu)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.snoozeTriggerText, { color: currentTheme.colors.warning }]}>
+                💤 Snooze
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* Snooze Options Popup Chips */}
+      {showSnoozeMenu && !isDone && (
+        <View
+          style={[
+            styles.snoozeMenu,
+            {
+              backgroundColor: currentTheme.colors.surfaceLight,
+              borderColor: `${currentTheme.colors.warning}66`,
+            },
+          ]}
+        >
+          <Text style={[styles.snoozeMenuTitle, { color: currentTheme.colors.textSecondary }]}>
+            Snooze Alarm By:
+          </Text>
+          <View style={styles.snoozeChipsRow}>
+            {[
+              { label: '+5m', mins: 5 },
+              { label: '+15m', mins: 15 },
+              { label: '+30m', mins: 30 },
+              { label: '+1 hour', mins: 60 },
+            ].map((s) => (
+              <TouchableOpacity
+                key={s.label}
+                style={[styles.snoozeChip, { backgroundColor: currentTheme.colors.surface }]}
+                onPress={() => handleSnooze(s.mins)}
+              >
+                <Text style={[styles.snoozeChipText, { color: currentTheme.colors.warning }]}>
+                  {s.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Title & Description with TickTick-style circular checkbox */}
       <View style={styles.body}>
@@ -143,99 +234,86 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
         </TouchableOpacity>
 
         {task.description ? (
-          <Text style={[styles.description, { color: currentTheme.colors.textSecondary }]} numberOfLines={2}>
+          <Text
+            style={[
+              styles.description,
+              { color: currentTheme.colors.textSecondary },
+              isDone && [styles.descDone, { color: currentTheme.colors.textMuted }],
+            ]}
+          >
             {task.description}
           </Text>
         ) : null}
       </View>
 
-      {/* Due Date & Reminder Info */}
-      <View style={styles.metaRow}>
-        <View style={styles.dueRow}>
-          <Text style={styles.dueIcon}>📅</Text>
-          <Text
-            style={[
-              styles.dueText,
-              { color: currentTheme.colors.textMuted },
-              isOverdue && !isDone && { color: currentTheme.colors.danger, fontWeight: '700' },
-              dueInfo.isToday && !isDone && { color: currentTheme.colors.warning, fontWeight: '700' },
-            ]}
-          >
-            {dueInfo.text}
-          </Text>
-        </View>
-
-        <Text style={[styles.progressLabel, { color: currentTheme.colors.textSecondary }]}>
-          {task.progress_percentage}% {isDone ? 'Completed' : ''}
-        </Text>
-      </View>
-
       {/* Progress Bar */}
-      <View style={[styles.progressBarContainer, { backgroundColor: currentTheme.colors.surfaceLight }]}>
-        <View
-          style={[
-            styles.progressBarFill,
-            {
-              width: `${task.progress_percentage}%`,
-              backgroundColor: isDone
-                ? currentTheme.colors.success
-                : isOverdue
-                ? currentTheme.colors.danger
-                : currentTheme.colors.primary,
-            },
-          ]}
-        />
+      <View style={styles.progressSection}>
+        <View style={styles.progressLabelRow}>
+          <Text style={[styles.progressText, { color: currentTheme.colors.textMuted }]}>
+            Progress: {task.progress_percentage}%
+          </Text>
+          {task.subtasks && task.subtasks.length > 0 && (
+            <TouchableOpacity onPress={() => setShowSubtasks(!showSubtasks)}>
+              <Text style={[styles.subtaskToggleText, { color: currentTheme.colors.primary }]}>
+                {showSubtasks ? 'Hide Steps' : `Steps (${task.subtasks.filter(s => s.completed).length}/${task.subtasks.length})`}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <View style={[styles.progressBarBg, { backgroundColor: currentTheme.colors.surfaceLight }]}>
+          <View
+            style={[
+              styles.progressBarFill,
+              {
+                width: `${task.progress_percentage}%`,
+                backgroundColor: isDone
+                  ? currentTheme.colors.success
+                  : task.progress_percentage > 50
+                  ? currentTheme.colors.primary
+                  : currentTheme.colors.warning,
+              },
+            ]}
+          />
+        </View>
       </View>
 
-      {/* Subtasks Checklist */}
-      {task.subtasks && task.subtasks.length > 0 && (
-        <View style={[styles.subtasksContainer, { backgroundColor: currentTheme.colors.surfaceLight }]}>
-          <TouchableOpacity
-            style={styles.subtasksHeader}
-            onPress={() => setShowSubtasks(!showSubtasks)}
-          >
-            <Text style={[styles.subtasksCount, { color: currentTheme.colors.textSecondary }]}>
-              Milestones ({task.subtasks.filter((s) => s.completed).length}/{task.subtasks.length})
-            </Text>
-            <Text style={[styles.subtasksToggle, { color: currentTheme.colors.textMuted }]}>
-              {showSubtasks ? '▲' : '▼'}
-            </Text>
-          </TouchableOpacity>
-
-          {showSubtasks &&
-            task.subtasks.map((st) => (
-              <TouchableOpacity
-                key={st.id}
-                style={styles.subtaskItem}
-                onPress={() => toggleSubtask(task.id, st.id)}
+      {/* Subtasks List */}
+      {showSubtasks && task.subtasks && task.subtasks.length > 0 && (
+        <View style={[styles.subtasksContainer, { borderTopColor: currentTheme.colors.cardBorder }]}>
+          {task.subtasks.map((st) => (
+            <TouchableOpacity
+              key={st.id}
+              style={styles.subtaskRow}
+              onPress={() => toggleSubtask(task.id, st.id)}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.subtaskBox,
+                  { borderColor: currentTheme.colors.cardBorder },
+                  st.completed && {
+                    backgroundColor: currentTheme.colors.primary,
+                    borderColor: currentTheme.colors.primary,
+                  },
+                ]}
               >
-                <View
-                  style={[
-                    styles.subtaskCheckbox,
-                    { borderColor: currentTheme.colors.textMuted },
-                    st.completed && {
-                      backgroundColor: currentTheme.colors.success,
-                      borderColor: currentTheme.colors.success,
-                    },
-                  ]}
-                >
-                  {st.completed && <Text style={styles.subtaskCheckMark}>✓</Text>}
-                </View>
-                <Text
-                  style={[
-                    styles.subtaskTitle,
-                    { color: currentTheme.colors.text },
-                    st.completed && [styles.subtaskTitleDone, { color: currentTheme.colors.textMuted }],
-                  ]}
-                >
-                  {st.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                {st.completed && <Text style={styles.subtaskCheckMark}>✓</Text>}
+              </View>
+              <Text
+                style={[
+                  styles.subtaskTitle,
+                  { color: currentTheme.colors.text },
+                  st.completed && [styles.subtaskTitleDone, { color: currentTheme.colors.textMuted }],
+                ]}
+              >
+                {st.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
 
-      {/* Progress Control Actions */}
+      {/* Progress Control & Footer Actions */}
       <View style={styles.footerRow}>
         <View style={styles.stepperRow}>
           <TouchableOpacity
@@ -264,6 +342,19 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
             disabled={isDone || task.progress_percentage >= 100}
           >
             <Text style={[styles.stepBtnText, { color: currentTheme.colors.textSecondary }]}>+10%</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.stepBtn,
+              {
+                backgroundColor: currentTheme.colors.surfaceLight,
+                borderColor: currentTheme.colors.cardBorder,
+              },
+            ]}
+            onPress={() => setEditingTask(task)}
+          >
+            <Text style={[styles.stepBtnText, { color: currentTheme.colors.primary }]}>✏️ Edit</Text>
           </TouchableOpacity>
         </View>
 
@@ -318,13 +409,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   priorityBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   priorityText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   recurrenceBadge: {
     paddingHorizontal: 7,
@@ -344,14 +435,75 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-  deleteBtn: {
-    padding: 4,
+  topActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  deleteBtnText: {
+  headerActionBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerActionText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  dueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  dueLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  dueEmoji: {
     fontSize: 13,
   },
+  dueText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  snoozeTriggerBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  snoozeTriggerText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  snoozeMenu: {
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  snoozeMenuTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  snoozeChipsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  snoozeChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  snoozeChipText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
   body: {
-    marginBottom: 8,
+    marginBottom: 10,
   },
   titleRow: {
     flexDirection: 'row',
@@ -359,16 +511,16 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   circleCheckbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkMark: {
     color: '#FFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
   },
   title: {
@@ -380,72 +532,56 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   description: {
-    fontSize: 13,
-    marginTop: 4,
-    marginLeft: 32,
-    lineHeight: 18,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-    marginBottom: 6,
-  },
-  dueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  dueIcon: {
     fontSize: 12,
+    marginTop: 4,
+    marginLeft: 30,
+    lineHeight: 16,
   },
-  dueText: {
-    fontSize: 11,
-    fontWeight: '500',
+  descDone: {
+    textDecorationLine: 'line-through',
   },
-  progressLabel: {
-    fontSize: 11,
+  progressSection: {
+    marginBottom: 8,
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  progressText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  subtaskToggleText: {
+    fontSize: 10,
     fontWeight: '700',
   },
-  progressBarContainer: {
+  progressBarBg: {
     height: 5,
     borderRadius: 3,
     overflow: 'hidden',
-    marginBottom: 10,
   },
   progressBarFill: {
     height: '100%',
     borderRadius: 3,
   },
   subtasksContainer: {
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
+    borderTopWidth: 1,
+    paddingTop: 8,
+    marginTop: 4,
+    marginBottom: 6,
+    gap: 4,
   },
-  subtasksHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  subtasksCount: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  subtasksToggle: {
-    fontSize: 10,
-  },
-  subtaskItem: {
+  subtaskRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
-  subtaskCheckbox: {
-    width: 15,
-    height: 15,
-    borderRadius: 4,
+  subtaskBox: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
@@ -457,7 +593,6 @@ const styles = StyleSheet.create({
   },
   subtaskTitle: {
     fontSize: 12,
-    fontWeight: '500',
   },
   subtaskTitleDone: {
     textDecorationLine: 'line-through',
@@ -466,12 +601,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
-    flexWrap: 'wrap',
-    gap: 8,
+    marginTop: 6,
   },
   stepperRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
   },
   stepBtn: {
@@ -486,7 +620,7 @@ const styles = StyleSheet.create({
   },
   completeBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 8,
   },
   completeBtnText: {

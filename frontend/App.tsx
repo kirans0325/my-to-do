@@ -14,6 +14,7 @@ import { useAppStore } from './src/state/useAppStore';
 import { Header } from './src/components/Header';
 import { Navigation } from './src/components/Navigation';
 import { CreateTaskModal } from './src/components/CreateTaskModal';
+import { EditTaskModal } from './src/components/EditTaskModal';
 import { CreateDiaryModal } from './src/components/CreateDiaryModal';
 import { AuthScreen } from './src/screens/AuthScreen';
 
@@ -114,6 +115,7 @@ export default function App() {
 
         {/* Global Modals */}
         <CreateTaskModal />
+        <EditTaskModal />
         <CreateDiaryModal />
 
         {/* Auth Modal (Sign In / Register) */}

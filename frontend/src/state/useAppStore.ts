@@ -153,6 +153,7 @@ interface AppState {
   isCreateTaskModalOpen: boolean;
   isCreateDiaryModalOpen: boolean;
   selectedDiaryDate: string;
+  editingTask: Task | null;
 
   // Data State
   tasks: Task[];
@@ -173,6 +174,7 @@ interface AppState {
   setCreateTaskModalOpen: (open: boolean) => void;
   setCreateDiaryModalOpen: (open: boolean) => void;
   setSelectedDiaryDate: (dateStr: string) => void;
+  setEditingTask: (task: Task | null) => void;
 
   // Async API Actions with Offline Resiliency
   fetchAllData: () => Promise<void>;
@@ -182,6 +184,8 @@ interface AppState {
   fetchStats: () => Promise<void>;
   
   createTask: (input: TaskCreateInput) => Promise<boolean>;
+  updateExistingTask: (id: number, input: Partial<TaskCreateInput>) => Promise<boolean>;
+  snoozeTask: (id: number, minutes?: number) => Promise<void>;
   updateTaskProgress: (id: number, progress: number, note?: string) => Promise<void>;
   toggleTaskComplete: (id: number) => Promise<void>;
   toggleSubtask: (taskId: number, subtaskId: number) => Promise<void>;
@@ -283,6 +287,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isCreateTaskModalOpen: false,
   isCreateDiaryModalOpen: false,
   selectedDiaryDate: getTodayDateString(),
+  editingTask: null,
 
   tasks: defaultTasks,
   categories: defaultCategories,
@@ -301,6 +306,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCreateTaskModalOpen: (open) => set({ isCreateTaskModalOpen: open }),
   setCreateDiaryModalOpen: (open) => set({ isCreateDiaryModalOpen: open }),
   setSelectedDiaryDate: (dateStr) => set({ selectedDiaryDate: dateStr }),
+  setEditingTask: (task) => set({ editingTask: task }),
 
   fetchAllData: async () => {
     set({ isLoading: true });
@@ -405,6 +411,68 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
       set((state) => ({ tasks: [localTask, ...state.tasks] }));
       return true;
+    }
+  },
+
+  updateExistingTask: async (id: number, input: Partial<TaskCreateInput>) => {
+    try {
+      const updated = await taskApi.updateTask(id, input);
+      const category = get().categories.find((c) => c.id === updated.category_id);
+      set((state) => ({
+        tasks: state.tasks.map((t) => (t.id === id ? { ...updated, category } : t)),
+        editingTask: null,
+      }));
+      get().fetchStats();
+      return true;
+    } catch (err: any) {
+      // Local fallback
+      set((state) => ({
+        tasks: state.tasks.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                title: input.title !== undefined ? input.title : t.title,
+                description: input.description !== undefined ? input.description : t.description,
+                priority: input.priority || t.priority,
+                recurrence_type: input.recurrence_type || t.recurrence_type,
+                category_id: input.category_id !== undefined ? input.category_id : t.category_id,
+                due_date: input.due_date !== undefined ? input.due_date : t.due_date,
+                subtasks: input.subtasks || t.subtasks,
+                updated_at: new Date().toISOString(),
+              }
+            : t
+        ),
+        editingTask: null,
+      }));
+      return true;
+    }
+  },
+
+  snoozeTask: async (id: number, minutes = 15) => {
+    try {
+      const updated = await taskApi.snoozeTask(id, minutes);
+      set((state) => ({
+        tasks: state.tasks.map((t) => (t.id === id ? { ...updated, category: t.category } : t)),
+        reminders: state.reminders.filter((r) => r.task_id !== id),
+      }));
+      get().fetchStats();
+    } catch (err: any) {
+      // Local fallback
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + minutes);
+      set((state) => ({
+        tasks: state.tasks.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                due_date: now.toISOString(),
+                status: t.status === 'OVERDUE' ? 'PENDING' : t.status,
+                updated_at: new Date().toISOString(),
+              }
+            : t
+        ),
+        reminders: state.reminders.filter((r) => r.task_id !== id),
+      }));
     }
   },
 

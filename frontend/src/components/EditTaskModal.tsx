@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Platform,
 } from 'react-native';
 import { getTheme } from '../utils/theme';
 import { RecurrenceType, PriorityLevel, Subtask } from '../types';
@@ -18,17 +17,15 @@ import {
   playNotificationSound,
 } from '../utils/soundEngine';
 
-export const CreateTaskModal: React.FC = () => {
-  const { isCreateTaskModalOpen, setCreateTaskModalOpen, categories, createTask, themeMode } = useAppStore();
+export const EditTaskModal: React.FC = () => {
+  const { editingTask, setEditingTask, categories, updateExistingTask, themeMode } = useAppStore();
   const currentTheme = getTheme(themeMode);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('NONE');
   const [priority, setPriority] = useState<PriorityLevel>('MEDIUM');
-  const [categoryId, setCategoryId] = useState<number | undefined>(
-    categories[0]?.id
-  );
+  const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [dueDateString, setDueDateString] = useState('');
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [subtaskInput, setSubtaskInput] = useState('');
@@ -37,13 +34,9 @@ export const CreateTaskModal: React.FC = () => {
   // Alarm & Sound State
   const [enableAlarm, setEnableAlarm] = useState(false);
   const [alarmTab, setAlarmTab] = useState<'EXACT_TIME' | 'COUNTDOWN'>('EXACT_TIME');
-  
-  // Exact Time State
   const [selectedHour, setSelectedHour] = useState('09');
   const [selectedMinute, setSelectedMinute] = useState('00');
   const [selectedPeriod, setSelectedPeriod] = useState<'AM' | 'PM'>('AM');
-  
-  // Countdown Timer State
   const [countdownMinutes, setCountdownMinutes] = useState(15);
   const [selectedSound, setSelectedSound] = useState<NotificationSoundType>('bell');
 
@@ -57,6 +50,29 @@ export const CreateTaskModal: React.FC = () => {
     { label: '1 hour', val: 60 },
     { label: '2 hours', val: 120 },
   ];
+
+  useEffect(() => {
+    if (editingTask) {
+      setTitle(editingTask.title || '');
+      setDescription(editingTask.description || '');
+      setRecurrenceType(editingTask.recurrence_type || 'NONE');
+      setPriority(editingTask.priority || 'MEDIUM');
+      setCategoryId(editingTask.category_id || categories[0]?.id);
+      setSubtasks(editingTask.subtasks || []);
+      setDueDateString(editingTask.due_date ? editingTask.due_date.slice(0, 16).replace('T', ' ') : '');
+
+      // Parse existing alarm info from description if present
+      if (editingTask.description && editingTask.description.includes('⏰ Alarm:')) {
+        setEnableAlarm(true);
+      } else if (editingTask.due_date) {
+        setEnableAlarm(true);
+      } else {
+        setEnableAlarm(false);
+      }
+    }
+  }, [editingTask]);
+
+  if (!editingTask) return null;
 
   const handleAddSubtask = () => {
     if (!subtaskInput.trim()) return;
@@ -97,7 +113,6 @@ export const CreateTaskModal: React.FC = () => {
         if (selectedPeriod === 'AM' && hr === 12) hr = 0;
         const target = new Date();
         target.setHours(hr, parseInt(selectedMinute, 10), 0, 0);
-        // If target time is earlier today, set for today or tomorrow
         if (target.getTime() < now.getTime()) {
           target.setDate(target.getDate() + 1);
         }
@@ -116,7 +131,7 @@ export const CreateTaskModal: React.FC = () => {
     return undefined;
   };
 
-  const handleSubmit = async () => {
+  const handleSave = async () => {
     if (!title.trim()) {
       alert('Please enter a task title');
       return;
@@ -126,15 +141,16 @@ export const CreateTaskModal: React.FC = () => {
     const parsedDueDate = getComputedDueDate();
     const alarmTimeLabel = getComputedAlarmTimeLabel();
 
-    const descWithAlarm = enableAlarm
-      ? `${description ? description + '\n' : ''}⏰ Alarm: ${alarmTimeLabel} • 🎵 Sound: ${selectedSound}`
-      : description;
+    // Clean old alarm tag from description if re-saving
+    let cleanDesc = (description || '').replace(/\n?⏰ Alarm:.*$/gm, '').trim();
+    if (enableAlarm) {
+      cleanDesc = `${cleanDesc ? cleanDesc + '\n' : ''}⏰ Alarm: ${alarmTimeLabel} • 🎵 Sound: ${selectedSound}`;
+    }
 
-    const success = await createTask({
+    const success = await updateExistingTask(editingTask.id, {
       title: title.trim(),
-      description: descWithAlarm ? descWithAlarm.trim() : undefined,
+      description: cleanDesc ? cleanDesc.trim() : undefined,
       recurrence_type: recurrenceType,
-      recurrence_interval: 1,
       priority,
       category_id: categoryId,
       due_date: parsedDueDate,
@@ -142,29 +158,18 @@ export const CreateTaskModal: React.FC = () => {
     });
 
     setIsSubmitting(false);
-
     if (success) {
-      if (enableAlarm) {
-        playNotificationSound(selectedSound);
-      }
-      // Reset form
-      setTitle('');
-      setDescription('');
-      setRecurrenceType('NONE');
-      setPriority('MEDIUM');
-      setDueDateString('');
-      setSubtasks([]);
-      setEnableAlarm(false);
-      setCreateTaskModalOpen(false);
+      if (enableAlarm) playNotificationSound(selectedSound);
+      setEditingTask(null);
     }
   };
 
   return (
     <Modal
-      visible={isCreateTaskModalOpen}
+      visible={!!editingTask}
       animationType="slide"
       transparent={true}
-      onRequestClose={() => setCreateTaskModalOpen(false)}
+      onRequestClose={() => setEditingTask(null)}
     >
       <View style={styles.modalOverlay}>
         <View
@@ -184,23 +189,13 @@ export const CreateTaskModal: React.FC = () => {
             ]}
           >
             <View style={styles.titleRow}>
-              <Text style={styles.headerEmoji}>📝</Text>
-              <Text
-                style={[styles.modalTitle, { color: currentTheme.colors.text }]}
-              >
-                Create New Task / Alarm
+              <Text style={styles.headerEmoji}>✏️</Text>
+              <Text style={[styles.modalTitle, { color: currentTheme.colors.text }]}>
+                Edit Task #{editingTask.id}
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.closeBtn}
-              onPress={() => setCreateTaskModalOpen(false)}
-            >
-              <Text
-                style={[
-                  styles.closeBtnText,
-                  { color: currentTheme.colors.textMuted },
-                ]}
-              >
+            <TouchableOpacity style={styles.closeBtn} onPress={() => setEditingTask(null)}>
+              <Text style={[styles.closeBtnText, { color: currentTheme.colors.textMuted }]}>
                 ✕
               </Text>
             </TouchableOpacity>
@@ -213,12 +208,7 @@ export const CreateTaskModal: React.FC = () => {
             showsVerticalScrollIndicator={false}
           >
             {/* Title Input */}
-            <Text
-              style={[
-                styles.label,
-                { color: currentTheme.colors.textSecondary },
-              ]}
-            >
+            <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
               Task Title *
             </Text>
             <TextInput
@@ -230,19 +220,14 @@ export const CreateTaskModal: React.FC = () => {
                   color: currentTheme.colors.text,
                 },
               ]}
-              placeholder="e.g. Server Maintenance, Workout, Pay Bills"
+              placeholder="Task title"
               placeholderTextColor={currentTheme.colors.textMuted}
               value={title}
               onChangeText={setTitle}
             />
 
             {/* Description Input */}
-            <Text
-              style={[
-                styles.label,
-                { color: currentTheme.colors.textSecondary },
-              ]}
-            >
+            <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
               Description & Notes
             </Text>
             <TextInput
@@ -255,7 +240,7 @@ export const CreateTaskModal: React.FC = () => {
                   color: currentTheme.colors.text,
                 },
               ]}
-              placeholder="Add key details, links, or steps..."
+              placeholder="Add key details..."
               placeholderTextColor={currentTheme.colors.textMuted}
               value={description}
               onChangeText={setDescription}
@@ -263,19 +248,12 @@ export const CreateTaskModal: React.FC = () => {
               numberOfLines={3}
             />
 
-            {/* Recurrence Frequency Selector */}
-            <Text
-              style={[
-                styles.label,
-                { color: currentTheme.colors.textSecondary },
-              ]}
-            >
+            {/* Recurrence Frequency */}
+            <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
               Reminder / Recurrence Frequency
             </Text>
             <View style={styles.pillRow}>
-              {(
-                ['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as RecurrenceType[]
-              ).map((r) => {
+              {(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as RecurrenceType[]).map((r) => {
                 const isSelected = recurrenceType === r;
                 return (
                   <TouchableOpacity
@@ -297,9 +275,7 @@ export const CreateTaskModal: React.FC = () => {
                       style={[
                         styles.pillText,
                         {
-                          color: isSelected
-                            ? '#FFFFFF'
-                            : currentTheme.colors.textSecondary,
+                          color: isSelected ? '#FFFFFF' : currentTheme.colors.textSecondary,
                           fontWeight: isSelected ? '800' : '600',
                         },
                       ]}
@@ -312,18 +288,11 @@ export const CreateTaskModal: React.FC = () => {
             </View>
 
             {/* Priority Selector */}
-            <Text
-              style={[
-                styles.label,
-                { color: currentTheme.colors.textSecondary },
-              ]}
-            >
+            <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
               Priority Level
             </Text>
             <View style={styles.pillRow}>
-              {(
-                ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as PriorityLevel[]
-              ).map((p) => {
+              {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as PriorityLevel[]).map((p) => {
                 const isSelected = priority === p;
                 const pColor = currentTheme.colors.priority[p];
                 return (
@@ -332,12 +301,8 @@ export const CreateTaskModal: React.FC = () => {
                     style={[
                       styles.pill,
                       {
-                        backgroundColor: isSelected
-                          ? pColor
-                          : currentTheme.colors.surfaceLight,
-                        borderColor: isSelected
-                          ? pColor
-                          : currentTheme.colors.cardBorder,
+                        backgroundColor: isSelected ? pColor : currentTheme.colors.surfaceLight,
+                        borderColor: isSelected ? pColor : currentTheme.colors.cardBorder,
                       },
                     ]}
                     onPress={() => setPriority(p)}
@@ -346,9 +311,7 @@ export const CreateTaskModal: React.FC = () => {
                       style={[
                         styles.pillText,
                         {
-                          color: isSelected
-                            ? '#FFFFFF'
-                            : currentTheme.colors.textSecondary,
+                          color: isSelected ? '#FFFFFF' : currentTheme.colors.textSecondary,
                           fontWeight: isSelected ? '800' : '600',
                         },
                       ]}
@@ -360,7 +323,7 @@ export const CreateTaskModal: React.FC = () => {
               })}
             </View>
 
-            {/* Alarm & Unique Notification Sound Section */}
+            {/* Alarm & Notification Sound Section */}
             <View
               style={[
                 styles.alarmSection,
@@ -400,7 +363,7 @@ export const CreateTaskModal: React.FC = () => {
 
               {enableAlarm && (
                 <View style={styles.alarmSettings}>
-                  {/* Alarm Type Mode Switcher: Exact Time vs Countdown */}
+                  {/* Mode Switcher */}
                   <View style={[styles.modeTabBar, { backgroundColor: currentTheme.colors.surface }]}>
                     <TouchableOpacity
                       style={[
@@ -437,10 +400,9 @@ export const CreateTaskModal: React.FC = () => {
                     </TouchableOpacity>
                   </View>
 
-                  {/* Mode 1: Exact Time of Day (Hour, Minute & AM/PM Stepper) */}
+                  {/* Mode 1: Exact Time */}
                   {alarmTab === 'EXACT_TIME' ? (
                     <View style={styles.timePickerContainer}>
-                      {/* Quick Presets */}
                       <Text style={[styles.subLabel, { color: currentTheme.colors.textSecondary }]}>
                         Quick Hour of Day:
                       </Text>
@@ -481,7 +443,7 @@ export const CreateTaskModal: React.FC = () => {
                         })}
                       </View>
 
-                      {/* Interactive Hour Selector */}
+                      {/* Hour selector */}
                       <Text style={[styles.subLabel, { color: currentTheme.colors.textSecondary, marginTop: 6 }]}>
                         Select Hour:
                       </Text>
@@ -510,7 +472,7 @@ export const CreateTaskModal: React.FC = () => {
                         </View>
                       </ScrollView>
 
-                      {/* Interactive Minute Selector & AM/PM Toggle */}
+                      {/* Minute & AM/PM */}
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.subLabel, { color: currentTheme.colors.textSecondary }]}>
@@ -594,7 +556,6 @@ export const CreateTaskModal: React.FC = () => {
                         })}
                       </View>
 
-                      {/* Custom Minutes Input */}
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
                         <Text style={{ fontSize: 12, color: currentTheme.colors.textSecondary }}>
                           Custom Timer:
@@ -622,7 +583,7 @@ export const CreateTaskModal: React.FC = () => {
                     </View>
                   )}
 
-                  {/* Sound Presets with Guaranteed Mobile Preview */}
+                  {/* Sound Presets */}
                   <Text style={[styles.subLabel, { color: currentTheme.colors.textSecondary, marginTop: 12 }]}>
                     🎵 Select Alarm Sound (Tap ▶️ to test sound)
                   </Text>
@@ -670,12 +631,7 @@ export const CreateTaskModal: React.FC = () => {
             {/* Category Selector */}
             {categories.length > 0 && (
               <>
-                <Text
-                  style={[
-                    styles.label,
-                    { color: currentTheme.colors.textSecondary },
-                  ]}
-                >
+                <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
                   Category
                 </Text>
                 <View style={styles.pillRow}>
@@ -687,12 +643,8 @@ export const CreateTaskModal: React.FC = () => {
                         style={[
                           styles.pill,
                           {
-                            backgroundColor: isSelected
-                              ? `${c.color}25`
-                              : currentTheme.colors.surfaceLight,
-                            borderColor: isSelected
-                              ? c.color
-                              : currentTheme.colors.cardBorder,
+                            backgroundColor: isSelected ? `${c.color}25` : currentTheme.colors.surfaceLight,
+                            borderColor: isSelected ? c.color : currentTheme.colors.cardBorder,
                           },
                         ]}
                         onPress={() => setCategoryId(c.id)}
@@ -701,9 +653,7 @@ export const CreateTaskModal: React.FC = () => {
                           style={[
                             styles.pillText,
                             {
-                              color: isSelected
-                                ? c.color
-                                : currentTheme.colors.textSecondary,
+                              color: isSelected ? c.color : currentTheme.colors.textSecondary,
                               fontWeight: isSelected ? '800' : '600',
                             },
                           ]}
@@ -717,13 +667,8 @@ export const CreateTaskModal: React.FC = () => {
               </>
             )}
 
-            {/* Subtasks Checklist Builder */}
-            <Text
-              style={[
-                styles.label,
-                { color: currentTheme.colors.textSecondary },
-              ]}
-            >
+            {/* Subtasks Checklist */}
+            <Text style={[styles.label, { color: currentTheme.colors.textSecondary }]}>
               Subtasks & Milestones
             </Text>
             <View style={styles.subtaskInputRow}>
@@ -738,7 +683,7 @@ export const CreateTaskModal: React.FC = () => {
                     color: currentTheme.colors.text,
                   },
                 ]}
-                placeholder="Add a milestone step..."
+                placeholder="Add milestone step..."
                 placeholderTextColor={currentTheme.colors.textMuted}
                 value={subtaskInput}
                 onChangeText={setSubtaskInput}
@@ -754,18 +699,12 @@ export const CreateTaskModal: React.FC = () => {
                 ]}
                 onPress={handleAddSubtask}
               >
-                <Text
-                  style={[
-                    styles.addSubtaskText,
-                    { color: currentTheme.colors.primary },
-                  ]}
-                >
+                <Text style={[styles.addSubtaskText, { color: currentTheme.colors.primary }]}>
                   + Add
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {/* Subtasks List */}
             {subtasks.map((st) => (
               <View
                 key={st.id}
@@ -777,21 +716,11 @@ export const CreateTaskModal: React.FC = () => {
                   },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.subtaskTitle,
-                    { color: currentTheme.colors.text },
-                  ]}
-                >
+                <Text style={[styles.subtaskTitle, { color: currentTheme.colors.text }]}>
                   • {st.title}
                 </Text>
                 <TouchableOpacity onPress={() => handleRemoveSubtask(st.id)}>
-                  <Text
-                    style={[
-                      styles.removeSubtaskText,
-                      { color: currentTheme.colors.danger },
-                    ]}
-                  >
+                  <Text style={[styles.removeSubtaskText, { color: currentTheme.colors.danger }]}>
                     ✕
                   </Text>
                 </TouchableOpacity>
@@ -814,28 +743,20 @@ export const CreateTaskModal: React.FC = () => {
                   borderColor: currentTheme.colors.cardBorder,
                 },
               ]}
-              onPress={() => setCreateTaskModalOpen(false)}
+              onPress={() => setEditingTask(null)}
             >
-              <Text
-                style={[
-                  styles.cancelBtnText,
-                  { color: currentTheme.colors.textSecondary },
-                ]}
-              >
+              <Text style={[styles.cancelBtnText, { color: currentTheme.colors.textSecondary }]}>
                 Cancel
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.createBtn,
-                { backgroundColor: currentTheme.colors.primary },
-              ]}
-              onPress={handleSubmit}
+              style={[styles.createBtn, { backgroundColor: currentTheme.colors.primary }]}
+              onPress={handleSave}
               disabled={isSubmitting}
             >
               <Text style={styles.createBtnText}>
-                {isSubmitting ? 'Creating...' : '✓ Create Task & Alarm'}
+                {isSubmitting ? 'Saving...' : '✓ Save Changes'}
               </Text>
             </TouchableOpacity>
           </View>

@@ -48,6 +48,11 @@ export const taskApi = {
     await apiClient.delete(`/tasks/${id}`);
   },
 
+  snoozeTask: async (id: number, minutes = 15): Promise<Task> => {
+    const res = await apiClient.post<Task>(`/tasks/${id}/snooze`, { minutes });
+    return res.data;
+  },
+
   // Categories
   getCategories: async (): Promise<Category[]> => {
     const res = await apiClient.get<Category[]>('/categories');

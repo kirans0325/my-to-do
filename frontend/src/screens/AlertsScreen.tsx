@@ -22,6 +22,7 @@ export const AlertsScreen: React.FC = () => {
     alertSummary,
     acknowledgeAlert,
     acknowledgeAllAlerts,
+    snoozeTask,
     fetchAllData,
     themeMode,
   } = useAppStore();
@@ -206,21 +207,44 @@ export const AlertsScreen: React.FC = () => {
               {log.message}
             </Text>
 
-            <TouchableOpacity
-              style={[
-                styles.ackBtn,
-                {
-                  backgroundColor: currentTheme.colors.surfaceLight,
-                  borderColor: currentTheme.colors.cardBorder,
-                  borderWidth: 1,
-                },
-              ]}
-              onPress={() => acknowledgeAlert(log.id)}
-            >
-              <Text style={[styles.ackBtnText, { color: currentTheme.colors.textSecondary }]}>
-                Dismiss / Acknowledge
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.logActionsRow}>
+              {log.task_id && (
+                <View style={styles.logSnoozeRow}>
+                  <TouchableOpacity
+                    style={[styles.snoozeLogChip, { backgroundColor: currentTheme.colors.surfaceLight }]}
+                    onPress={() => snoozeTask(log.task_id!, 15)}
+                  >
+                    <Text style={[styles.snoozeLogChipText, { color: currentTheme.colors.warning }]}>
+                      💤 Snooze 15m
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.snoozeLogChip, { backgroundColor: currentTheme.colors.surfaceLight }]}
+                    onPress={() => snoozeTask(log.task_id!, 60)}
+                  >
+                    <Text style={[styles.snoozeLogChipText, { color: currentTheme.colors.warning }]}>
+                      💤 Snooze 1h
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  styles.ackBtn,
+                  {
+                    backgroundColor: currentTheme.colors.surfaceLight,
+                    borderColor: currentTheme.colors.cardBorder,
+                    borderWidth: 1,
+                  },
+                ]}
+                onPress={() => acknowledgeAlert(log.id)}
+              >
+                <Text style={[styles.ackBtnText, { color: currentTheme.colors.textSecondary }]}>
+                  Dismiss
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ))
       ) : (
@@ -343,6 +367,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     marginBottom: 10,
+  },
+  logActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  logSnoozeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  snoozeLogChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  snoozeLogChipText: {
+    fontSize: 10,
+    fontWeight: '800',
   },
   ackBtn: {
     alignSelf: 'flex-start',

@@ -1,5 +1,6 @@
 from typing import List, Optional
 from datetime import datetime, timezone
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
@@ -256,3 +257,35 @@ async def delete_task(
     await db.delete(task)
     await db.commit()
     return None
+
+class SnoozeInput(BaseModel):
+    minutes: int = Field(default=15, ge=1, le=1440)
+
+@router.post("/{task_id}/snooze", response_model=TaskResponse)
+async def snooze_task(
+    task_id: int,
+    payload: SnoozeInput = SnoozeInput(),
+    db: AsyncSession = Depends(get_db)
+):
+    """Snooze task alarm/due_date by N minutes."""
+    stmt = select(Task).options(
+        selectinload(Task.category),
+        selectinload(Task.progress_entries)
+    ).where(Task.id == task_id)
+    task = (await db.execute(stmt)).scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
+
+    from datetime import timedelta
+    now_utc = datetime.now(timezone.utc)
+    base_time = task.due_date if (task.due_date and task.due_date > now_utc) else now_utc
+    task.due_date = base_time + timedelta(minutes=payload.minutes)
+    
+    # If status was overdue, revert to in_progress/pending
+    if task.status == "OVERDUE":
+        task.status = "IN_PROGRESS" if task.progress_percentage > 0 else "PENDING"
+
+    task.updated_at = now_utc
+    await db.commit()
+    await db.refresh(task)
+    return task
