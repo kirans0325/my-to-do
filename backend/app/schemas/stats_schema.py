@@ -15,6 +15,26 @@ class CategoryBreakdown(BaseModel):
     total: int
     completed: int
 
+class TimeAllocationItem(BaseModel):
+    category_name: str
+    color: str
+    count: int
+    percentage: float
+
+class GrowingHabitItem(BaseModel):
+    id: int
+    name: str
+    category_name: str
+    color: str
+    completed_count: int
+    streak_days: int
+    consistency_rate: float
+
+class MoodDistributionItem(BaseModel):
+    mood: str
+    count: int
+    percentage: float
+
 class OverviewStatsResponse(BaseModel):
     total_tasks: int
     completed_tasks: int
@@ -33,6 +53,9 @@ class OverviewStatsResponse(BaseModel):
     # Breakdowns by Category
     categories: List[CategoryBreakdown]
     
-    # Diary stats
+    # Diary & Behavioral Analytics
     total_diary_entries: int
     average_productivity: float
+    time_allocation: List[TimeAllocationItem] = []
+    growing_habits: List[GrowingHabitItem] = []
+    mood_distribution: List[MoodDistributionItem] = []

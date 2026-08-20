@@ -60,6 +60,138 @@ export const AnalyticsScreen: React.FC = () => {
         />
       </View>
 
+      {/* WHERE YOU SPEND YOUR TIME (Time & Activity Allocation) */}
+      <View
+        style={[
+          styles.sectionCard,
+          {
+            backgroundColor: currentTheme.colors.surface,
+            borderColor: currentTheme.colors.cardBorder,
+          },
+        ]}
+      >
+        <View style={styles.cardHeaderRow}>
+          <Text style={styles.sectionEmoji}>⏳</Text>
+          <View>
+            <Text style={[styles.sectionTitle, { color: currentTheme.colors.text, marginBottom: 2 }]}>
+              Where You Spend Your Time
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: currentTheme.colors.textSecondary }]}>
+              Analyzed from daily notes, activities & completed tasks
+            </Text>
+          </View>
+        </View>
+
+        {stats?.time_allocation && stats.time_allocation.length > 0 ? (
+          <View style={styles.catList}>
+            {stats.time_allocation.map((item, idx) => (
+              <View key={idx} style={styles.catItem}>
+                <View style={styles.catHeader}>
+                  <View style={styles.catNameRow}>
+                    <View style={[styles.catColorDot, { backgroundColor: item.color }]} />
+                    <Text style={[styles.catName, { color: currentTheme.colors.text }]}>
+                      {item.category_name}
+                    </Text>
+                  </View>
+                  <Text style={[styles.catCount, { color: item.color }]}>
+                    {item.percentage}% ({item.count} logs)
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.barContainer,
+                    { backgroundColor: currentTheme.colors.surfaceLight },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.barFill,
+                      { width: `${item.percentage}%`, backgroundColor: item.color },
+                    ]}
+                  />
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={[styles.emptyHintText, { color: currentTheme.colors.textMuted }]}>
+            No time logs recorded yet. Add activities in your daily notes to see where your time goes!
+          </Text>
+        )}
+      </View>
+
+      {/* HABITS YOU ARE GROWING */}
+      <View
+        style={[
+          styles.sectionCard,
+          {
+            backgroundColor: currentTheme.colors.surface,
+            borderColor: currentTheme.colors.cardBorder,
+          },
+        ]}
+      >
+        <View style={styles.cardHeaderRow}>
+          <Text style={styles.sectionEmoji}>🌱</Text>
+          <View>
+            <Text style={[styles.sectionTitle, { color: currentTheme.colors.text, marginBottom: 2 }]}>
+              Habits You Are Growing
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: currentTheme.colors.textSecondary }]}>
+              Daily routines, streak momentum & habit consistency
+            </Text>
+          </View>
+        </View>
+
+        {stats?.growing_habits && stats.growing_habits.length > 0 ? (
+          <View style={styles.freqList}>
+            {stats.growing_habits.map((habit) => (
+              <View
+                key={habit.id}
+                style={[
+                  styles.freqItem,
+                  { backgroundColor: currentTheme.colors.surfaceLight },
+                ]}
+              >
+                <View style={styles.freqHeader}>
+                  <View style={styles.freqTitleRow}>
+                    <View style={[styles.catColorDot, { backgroundColor: habit.color }]} />
+                    <Text style={[styles.freqTitleText, { color: currentTheme.colors.text }]}>
+                      {habit.name}
+                    </Text>
+                  </View>
+                  <Text style={[styles.freqRateText, { color: habit.color }]}>
+                    🔥 {habit.streak_days}d Streak ({habit.consistency_rate}% Consistent)
+                  </Text>
+                </View>
+
+                {/* Progress Bar */}
+                <View
+                  style={[
+                    styles.barContainer,
+                    { backgroundColor: currentTheme.colors.surface },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.barFill,
+                      {
+                        width: `${habit.consistency_rate}%`,
+                        backgroundColor: habit.color,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={[styles.emptyHintText, { color: currentTheme.colors.textMuted }]}>
+            No active daily habits yet. Create a daily task to track habit consistency over time!
+          </Text>
+        )}
+      </View>
+
       {/* Recurrence Frequency Performance Breakdown */}
       <View
         style={[
@@ -70,7 +202,7 @@ export const AnalyticsScreen: React.FC = () => {
           },
         ]}
       >
-        <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>
+        <Text style={[styles.sectionTitle, { color: currentTheme.colors.text, marginBottom: 16 }]}>
           Progress by Recurrence Frequency
         </Text>
 
@@ -149,7 +281,7 @@ export const AnalyticsScreen: React.FC = () => {
             },
           ]}
         >
-          <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>
+          <Text style={[styles.sectionTitle, { color: currentTheme.colors.text, marginBottom: 16 }]}>
             Category Progress Breakdown
           </Text>
 
@@ -214,10 +346,26 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
   },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  sectionEmoji: {
+    fontSize: 22,
+  },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '800',
-    marginBottom: 16,
+  },
+  sectionSubtitle: {
+    fontSize: 11,
+  },
+  emptyHintText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    paddingVertical: 10,
   },
   freqList: {
     gap: 12,

@@ -167,6 +167,90 @@ async def calculate_overview_stats(db: AsyncSession, current_user: Optional[User
     ).where(diary_user_cond)
     diary_count, avg_productivity = (await db.execute(diary_stats_stmt)).one()
 
+    # 6. Analyze Time Allocation from Daily Notes & Tasks (Where time is being spent)
+    diary_entries_stmt = select(DiaryEntry).where(diary_user_cond)
+    user_diaries = (await db.execute(diary_entries_stmt)).scalars().all()
+
+    category_time_map: Dict[str, int] = {}
+    total_time_units = 0
+
+    for diary in user_diaries:
+        activities = diary.activities or []
+        for act in activities:
+            if isinstance(act, dict):
+                cat = act.get("category") or act.get("activity") or "General"
+            else:
+                cat = "General"
+            category_time_map[cat] = category_time_map.get(cat, 0) + 1
+            total_time_units += 1
+
+        if diary.tags:
+            tag_list = [t.strip().capitalize() for t in diary.tags.split(",") if t.strip()]
+            for tag in tag_list:
+                category_time_map[tag] = category_time_map.get(tag, 0) + 1
+                total_time_units += 1
+
+    # Also include completed tasks per category in time allocation
+    for cid, cname, ccolor, ctotal, ccomp in cat_results:
+        if ccomp > 0:
+            category_time_map[cname] = category_time_map.get(cname, 0) + ccomp
+            total_time_units += ccomp
+
+    # Colors for dynamic category tags
+    palette = ["#6366F1", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899", "#3B82F6", "#14B8A6"]
+    time_allocation: List[TimeAllocationItem] = []
+    
+    if total_time_units > 0:
+        idx = 0
+        for cat_name, count in sorted(category_time_map.items(), key=lambda x: x[1], reverse=True)[:6]:
+            color = next((c.color for cid, cname, ccolor, ctotal, ccomp in cat_results if cname == cat_name), palette[idx % len(palette)])
+            pct = round((count / total_time_units) * 100.0, 1)
+            time_allocation.append(TimeAllocationItem(
+                category_name=cat_name,
+                color=color,
+                count=count,
+                percentage=pct
+            ))
+            idx += 1
+
+    # 7. Analyze Growing Habits (What habits are growing)
+    daily_tasks_stmt = select(Task).options(
+        selectinload(Task.category)
+    ).where(and_(Task.recurrence_type == "DAILY", task_user_cond))
+    user_daily_tasks = (await db.execute(daily_tasks_stmt)).scalars().all()
+
+    growing_habits: List[GrowingHabitItem] = []
+    for dt in user_daily_tasks:
+        completed_cnt = 1 if dt.status == "COMPLETED" else (dt.progress_percentage // 25)
+        rate = float(dt.progress_percentage) if dt.progress_percentage > 0 else (100.0 if dt.status == "COMPLETED" else 50.0)
+        growing_habits.append(GrowingHabitItem(
+            id=dt.id,
+            name=dt.title,
+            category_name=dt.category.name if dt.category else "Daily Habit",
+            color=dt.category.color if dt.category else "#10B981",
+            completed_count=completed_cnt,
+            streak_days=streak_days if dt.status == "COMPLETED" else max(1, streak_days),
+            consistency_rate=rate
+        ))
+
+    # 8. Mood & Energy Distribution from Daily Notes
+    mood_counts_stmt = select(
+        DiaryEntry.mood,
+        func.count(DiaryEntry.id)
+    ).where(diary_user_cond).group_by(DiaryEntry.mood)
+    mood_results = (await db.execute(mood_counts_stmt)).all()
+
+    total_mood_logs = sum(cnt for m, cnt in mood_results)
+    mood_distribution: List[MoodDistributionItem] = []
+    if total_mood_logs > 0:
+        for mood_val, cnt in mood_results:
+            if mood_val:
+                mood_distribution.append(MoodDistributionItem(
+                    mood=mood_val,
+                    count=cnt,
+                    percentage=round((cnt / total_mood_logs) * 100.0, 1)
+                ))
+
     return OverviewStatsResponse(
         total_tasks=total,
         completed_tasks=completed,
@@ -181,5 +265,8 @@ async def calculate_overview_stats(db: AsyncSession, current_user: Optional[User
         one_time_stats=one_time_stats,
         categories=cat_breakdowns,
         total_diary_entries=diary_count or 0,
-        average_productivity=round(float(avg_productivity or 0.0), 1)
+        average_productivity=round(float(avg_productivity or 0.0), 1),
+        time_allocation=time_allocation,
+        growing_habits=growing_habits,
+        mood_distribution=mood_distribution
     )

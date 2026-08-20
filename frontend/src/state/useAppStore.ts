@@ -74,7 +74,10 @@ const defaultStats: OverviewStats = {
     completed: 0
   })),
   total_diary_entries: 0,
-  average_productivity: 0.0
+  average_productivity: 0.0,
+  time_allocation: [],
+  growing_habits: [],
+  mood_distribution: []
 };
 
 interface AppState {

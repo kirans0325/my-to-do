@@ -124,6 +124,29 @@ export interface CategoryBreakdown {
   completed: number;
 }
 
+export interface TimeAllocationItem {
+  category_name: string;
+  color: string;
+  count: number;
+  percentage: number;
+}
+
+export interface GrowingHabitItem {
+  id: number;
+  name: string;
+  category_name: string;
+  color: string;
+  completed_count: number;
+  streak_days: number;
+  consistency_rate: number;
+}
+
+export interface MoodDistributionItem {
+  mood: MoodType;
+  count: number;
+  percentage: number;
+}
+
 export interface OverviewStats {
   total_tasks: number;
   completed_tasks: number;
@@ -139,6 +162,9 @@ export interface OverviewStats {
   categories: CategoryBreakdown[];
   total_diary_entries: number;
   average_productivity: number;
+  time_allocation?: TimeAllocationItem[];
+  growing_habits?: GrowingHabitItem[];
+  mood_distribution?: MoodDistributionItem[];
 }
 
 export type UserRole = 'USER' | 'ADMIN';
