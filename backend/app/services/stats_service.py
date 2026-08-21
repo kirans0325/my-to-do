@@ -9,7 +9,10 @@ from app.models.user import User
 from app.schemas.stats_schema import (
     OverviewStatsResponse,
     FrequencyBreakdown,
-    CategoryBreakdown
+    CategoryBreakdown,
+    TimeAllocationItem,
+    GrowingHabitItem,
+    MoodDistributionItem
 )
 
 async def calculate_overview_stats(db: AsyncSession, current_user: Optional[User] = None) -> OverviewStatsResponse:
