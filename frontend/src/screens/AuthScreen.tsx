@@ -63,14 +63,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onClose }) => {
       >
         {/* Brand Header */}
         <View style={styles.header}>
-          <View style={[styles.logoBadge, { backgroundColor: currentTheme.colors.primary }]}>
-            <Text style={styles.logoText}>✓</Text>
+          <View style={[styles.logoBadge, { backgroundColor: '#F59E0B' }]}>
+            <Text style={styles.logoText}>🍃</Text>
           </View>
-          <Text style={[styles.title, { color: currentTheme.colors.text }]}>Task Flow</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={[styles.title, { color: currentTheme.colors.text }]}>PharmaChem </Text>
+            <Text style={[styles.title, { color: '#F59E0B' }]}>Engineering</Text>
+          </View>
           <Text style={[styles.subtitle, { color: currentTheme.colors.textSecondary }]}>
-            {isRegister
-              ? 'Create a private personal workspace for tasks, habits & notes'
-              : 'Sign in to access your synchronized tasks & diary'}
+            Safe, Scalable Process Engineering Solutions
           </Text>
         </View>
 
