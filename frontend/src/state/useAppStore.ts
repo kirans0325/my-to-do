@@ -197,8 +197,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().fetchAllData();
       return true;
     } catch (err: any) {
+      const isTimeout = err.message && err.message.toLowerCase().includes('timeout');
       const msg =
         err.response?.data?.detail ||
+        (isTimeout ? 'Connection timed out. Please check your internet or retry.' : null) ||
         (err.response?.status === 404 ? 'Login endpoint not found. Check server connection.' : null) ||
         (err.message && err.message.includes('Network') ? 'Network Error: Unable to reach backend server.' : null) ||
         err.message ||
