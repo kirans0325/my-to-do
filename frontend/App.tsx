@@ -38,9 +38,6 @@ export default function App() {
   const currentTheme = getTheme(themeMode);
 
   useEffect(() => {
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      document.title = "PharmaChem Engineering | Safe, Scalable Process Engineering Solutions";
-    }
     initAuth().then(() => {
       fetchAllData();
     });

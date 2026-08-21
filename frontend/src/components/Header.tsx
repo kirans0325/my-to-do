@@ -41,25 +41,22 @@ export const Header: React.FC = () => {
         },
       ]}
     >
-      {/* Brand & Tagline */}
+      {/* Brand & Date */}
       <View style={styles.brandRow}>
         <View
           style={[
             styles.logoBadge,
             {
-              backgroundColor: '#F59E0B',
+              backgroundColor: currentTheme.colors.primary,
             },
           ]}
         >
-          <Text style={styles.logoText}>🍃</Text>
+          <Text style={styles.logoText}>✓</Text>
         </View>
         <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={[styles.title, { color: currentTheme.colors.text }]}>PharmaChem </Text>
-            <Text style={[styles.title, { color: '#F59E0B' }]}>Engineering</Text>
-          </View>
+          <Text style={[styles.title, { color: currentTheme.colors.text }]}>Task Flow</Text>
           <Text style={[styles.subtitle, { color: currentTheme.colors.textMuted }]}>
-            Safe, Scalable Process Engineering Solutions
+            {dateFormatted} • ☁️ Neon DB
           </Text>
         </View>
       </View>
