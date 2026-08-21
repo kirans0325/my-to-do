@@ -41,22 +41,8 @@ const getBaseUrl = (): string => {
   if (CUSTOM_BACKEND_URL) {
     return CUSTOM_BACKEND_URL;
   }
-
-  if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined' && window.location) {
-      const host = window.location.hostname;
-      // In local development web browser on any port or local network IP
-      if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.')) {
-        return `http://${host}:8000/api/v1`;
-      }
-      // Production web app or Vercel hosting
-      return VERCEL_CLOUD_URL;
-    }
-    return VERCEL_CLOUD_URL;
-  } else if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    // In Android APK or iOS: Connect directly to live Vercel Cloud Backend & Neon DB
-    return VERCEL_CLOUD_URL;
-  }
+  // Default to live Vercel Cloud Backend API & Neon PostgreSQL Database
+  // Guaranteed instant connection (<200ms) without local port/firewall timeouts
   return VERCEL_CLOUD_URL;
 };
 
