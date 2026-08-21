@@ -64,37 +64,36 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         
-        # Safe PostgreSQL / SQLite column migrations for multi-user user_id
-        try:
-            if settings.is_postgres:
-                await conn.execute(text("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;"))
-                await conn.execute(text("ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;"))
-                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0;"))
-                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_user_id ON tasks(user_id);"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_diary_user_id ON diary_entries(user_id);"))
-                # Drop old single-column unique index on entry_date if present to allow multiple users per date
-                await conn.execute(text("DROP INDEX IF EXISTS ix_diary_entries_entry_date;"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_diary_entries_entry_date ON diary_entries(entry_date);"))
-            elif settings.is_sqlite:
-                # SQLite fallback
-                try:
-                    await conn.execute(text("ALTER TABLE tasks ADD COLUMN user_id INTEGER;"))
-                except Exception:
-                    pass
-                try:
-                    await conn.execute(text("ALTER TABLE diary_entries ADD COLUMN user_id INTEGER;"))
-                except Exception:
-                    pass
-                try:
-                    await conn.execute(text("ALTER TABLE users ADD COLUMN login_count INTEGER DEFAULT 0;"))
-                except Exception:
-                    pass
-                try:
-                    await conn.execute(text("ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP;"))
-                except Exception:
-                    pass
-        except Exception as e:
-            logger.warning(f"Column migration warning (safe to ignore if columns exist): {e}")
+    # Safe PostgreSQL / SQLite column migrations for multi-user user_id
+    if settings.is_postgres:
+        migrations = [
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;",
+            "ALTER TABLE diary_entries ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0;",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;",
+            "CREATE INDEX IF NOT EXISTS ix_tasks_user_id ON tasks(user_id);",
+            "CREATE INDEX IF NOT EXISTS ix_diary_user_id ON diary_entries(user_id);",
+            "DROP INDEX IF EXISTS ix_diary_entries_entry_date;",
+            "CREATE INDEX IF NOT EXISTS ix_diary_entries_entry_date ON diary_entries(entry_date);"
+        ]
+        for stmt_str in migrations:
+            try:
+                async with engine.begin() as conn:
+                    await conn.execute(text(stmt_str))
+            except Exception as e:
+                logger.debug(f"Migration statement executed with notice: {e}")
+    elif settings.is_sqlite:
+        sqlite_migrations = [
+            "ALTER TABLE tasks ADD COLUMN user_id INTEGER;",
+            "ALTER TABLE diary_entries ADD COLUMN user_id INTEGER;",
+            "ALTER TABLE users ADD COLUMN login_count INTEGER DEFAULT 0;",
+            "ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP;"
+        ]
+        for stmt_str in sqlite_migrations:
+            try:
+                async with engine.begin() as conn:
+                    await conn.execute(text(stmt_str))
+            except Exception:
+                pass
 
     logger.info("Database schema initialized successfully.")
