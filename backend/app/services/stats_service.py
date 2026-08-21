@@ -2,6 +2,7 @@ from typing import List, Dict, Tuple, Optional
 from datetime import datetime, timezone, timedelta, date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, case, distinct
+from sqlalchemy.orm import selectinload
 from app.models.task import Task
 from app.models.category import Category
 from app.models.diary import DiaryEntry
