@@ -44,18 +44,17 @@ const getBaseUrl = (): string => {
 
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined' && window.location) {
-      // In local development web browser on port 8081 / 19006 / 3000
-      if (window.location.port === '8081' || window.location.port === '19006' || window.location.port === '3000') {
-        if (window.location.hostname) {
-          return `http://${window.location.hostname}:8000/api/v1`;
-        }
+      const host = window.location.hostname;
+      // In local development web browser on any port or local network IP
+      if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.')) {
+        return `http://${host}:8000/api/v1`;
       }
-      // In Vercel / Production web hosting (same origin /api/v1)
-      return `${window.location.origin}/api/v1`;
+      // Production web app or Vercel hosting
+      return VERCEL_CLOUD_URL;
     }
     return VERCEL_CLOUD_URL;
   } else if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    // In Android APK or iOS: Connect directly to your live Vercel Cloud Backend & Neon DB
+    // In Android APK or iOS: Connect directly to live Vercel Cloud Backend & Neon DB
     return VERCEL_CLOUD_URL;
   }
   return VERCEL_CLOUD_URL;

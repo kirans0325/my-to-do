@@ -197,7 +197,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().fetchAllData();
       return true;
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Invalid username or password.';
+      const msg =
+        err.response?.data?.detail ||
+        (err.response?.status === 404 ? 'Login endpoint not found. Check server connection.' : null) ||
+        (err.message && err.message.includes('Network') ? 'Network Error: Unable to reach backend server.' : null) ||
+        err.message ||
+        'Invalid username or password.';
       set({ authError: msg, authLoading: false });
       return false;
     }
